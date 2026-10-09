@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Create an account · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="auth-wrap">
+  <div class="auth-form-side">
+    <div class="auth-card">
+      <a class="brand" href="index.html" style="margin-bottom:28px">
+        <span class="brand-mark">CP</span>
+        <span>CampusPlace<br><span class="brand-sub">AIT · Training &amp; Placement</span></span>
+      </a>
+      <h1>Create an account</h1>
+      <p class="muted" style="font-size:14px">Placement admin accounts are issued by the cell and cannot be self-registered.</p>
+
+      <form id="reg-form" novalidate style="margin-top:24px">
+        <fieldset>
+          <legend>I am a</legend>
+          <label class="check"><input type="radio" name="role" value="student" checked> <span><strong>Student</strong> — I want to apply to approved openings</span></label>
+          <label class="check"><input type="radio" name="role" value="recruiter"> <span><strong>Recruiter</strong> — I post openings for a company</span></label>
+        </fieldset>
+
+        <div class="field">
+          <label for="name">Full name <span class="req">*</span></label>
+          <input type="text" id="name" name="name" autocomplete="name" placeholder="Ananya Rao">
+          <p class="field-error">Full name is required.</p>
+        </div>
+        <div class="field">
+          <label for="email">Email address <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="username" placeholder="you@example.com">
+          <p class="field-error">Enter a valid email address.</p>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="password">Password <span class="req">*</span></label>
+            <input type="password" id="password" name="password" autocomplete="new-password" placeholder="Min. 6 characters">
+            <p class="field-error">Use at least 6 characters.</p>
+          </div>
+          <div class="field">
+            <label for="confirm">Confirm password <span class="req">*</span></label>
+            <input type="password" id="confirm" name="confirm" autocomplete="new-password">
+            <p class="field-error">Passwords do not match.</p>
+          </div>
+        </div>
+
+        <div id="student-fields">
+          <div class="grid-2">
+            <div class="field">
+              <label for="branch">Branch <span class="req">*</span></label>
+              <select id="branch" name="branch">
+                <option value="">Select branch</option>
+                <option>CSE</option><option>IT</option><option>ECE</option>
+                <option>EEE</option><option>Mechanical</option><option>Civil</option>
+              </select>
+              <p class="field-error">Select your branch.</p>
+            </div>
+            <div class="field">
+              <label for="gradYear">Graduation year <span class="req">*</span></label>
+              <select id="gradYear" name="gradYear">
+                <option>2026</option><option selected>2027</option><option>2028</option>
+              </select>
+              <p class="field-error">Select your batch.</p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cgpa">Current CGPA <span class="req">*</span></label>
+            <input type="number" id="cgpa" name="cgpa" step="0.01" min="0" max="10" placeholder="e.g. 8.4">
+            <p class="field-hint">Used to check eligibility against each opening. Edit it later from your profile.</p>
+            <p class="field-error">CGPA must be between 0 and 10.</p>
+          </div>
+        </div>
+
+        <div id="recruiter-fields" class="hide">
+          <div class="field">
+            <label for="designation">Designation <span class="req">*</span></label>
+            <input type="text" id="designation" name="designation" placeholder="Campus Hiring Lead">
+            <p class="field-error">Designation is required.</p>
+          </div>
+          <div class="panel-note panel-note-info" id="ic-info">
+            <span></span>
+            <span>Your company profile starts as <strong>Pending</strong>. The placement cell approves it before any opening you post can go live.</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-block" type="submit" id="submit-btn" style="margin-top:20px">Create account</button>
+        <p class="text-sm muted" style="margin-top:16px">Already registered? <a href="login.html">Sign in</a></p>
+      </form>
+    </div>
+  </div>
+
+  <aside class="auth-side">
+    <div class="hero-shapes" aria-hidden="true"><span class="shape shape-a"></span><span class="shape shape-b"></span></div>
+    <h3>What happens after you register</h3>
+    <ul>
+      <li><span id="ic1"></span><span><strong>Students</strong> — your profile joins the 2026 batch list the cell shares with recruiters.</span></li>
+      <li><span id="ic2"></span><span><strong>Recruiters</strong> — the cell verifies your company details, usually within two working days.</span></li>
+      <li><span id="ic3"></span><span><strong>Every action</strong> on approvals and shortlists is timestamped in the audit log.</span></li>
+    </ul>
+    <p class="text-sm" style="color:rgba(255,255,255,0.7);margin-top:24px">
+      Trouble registering? Write to <a href="mailto:placement@ait.edu.in" style="color:#9fe8cb">placement@ait.edu.in</a> or visit Block C, Room 12.
+    </p>
+  </aside>
+</div>
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  document.getElementById('ic1').innerHTML = UI.icon('briefcase', 18);
+  document.getElementById('ic2').innerHTML = UI.icon('building', 18);
+  document.getElementById('ic3').innerHTML = UI.icon('history', 18);
+  document.querySelector('#ic-info span').innerHTML = UI.icon('info', 18);
+
+  var form = document.getElementById('reg-form');
+  var submitBtn = document.getElementById('submit-btn');
+
+  function syncRole() {
+    var role = form.querySelector('[name="role"]:checked').value;
+    document.getElementById('student-fields').classList.toggle('hide', role !== 'student');
+    document.getElementById('recruiter-fields').classList.toggle('hide', role !== 'recruiter');
+  }
+  Array.prototype.forEach.call(form.querySelectorAll('[name="role"]'), function (r) {
+    r.addEventListener('change', syncRole);
+  });
+  syncRole();
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var role = form.querySelector('[name="role"]:checked').value;
+    var rules = {
+      name: { required: true },
+      email: { required: true, email: true },
+      password: { required: true, minlength: 6 },
+      confirm: { required: true, matches: 'password' }
+    };
+    if (role === 'student') {
+      rules.branch = { required: true };
+      rules.cgpa = { required: true, number: true, min: 0, max: 10 };
+    } else {
+      rules.designation = { required: true };
+    }
+    if (!UI.validate(form, rules)) return;
+
+    var payload = {
+      role: role,
+      name: form.name.value.trim(),
+      email: form.email.value.trim(),
+      password: form.password.value,
+      branch: form.branch.value,
+      cgpa: form.cgpa.value,
+      gradYear: form.gradYear.value,
+      designation: form.designation.value
+    };
+    var restore = UI.busy(submitBtn, 'Creating account…');
+    API.register(payload).then(function (user) {
+      UI.toast('Account created. Welcome, ' + user.name.split(' ')[0] + '.');
+      location.href = user.role === 'student' ? 'student/dashboard.html' : 'recruiter/dashboard.html';
+    }).catch(function (err) {
+      restore();
+      UI.reportError(err, form);
+    });
+  });
+
+  AUTH.boot().then(function () {
+    var u = API.currentUser();
+    if (u) location.replace(({ student: 'student/dashboard.html', recruiter: 'recruiter/dashboard.html', admin: 'admin/dashboard.html' })[u.role] || 'index.html');
+  });
+</script>
+</body>
+</html>

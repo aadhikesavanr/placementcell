@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browse openings · Student portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Browse openings</h1>
+      <p>Only postings approved by the placement cell appear here. Eligibility shown on each card is advisory — the portal re-checks it when you apply.</p>
+    </div>
+  </div>
+
+  <form class="filters" id="filters" role="search" style="margin-bottom:20px">
+    <div class="field grow">
+      <label for="q">Search</label>
+      <input type="search" id="q" name="q" placeholder="Role, company or city — e.g. data analyst">
+    </div>
+    <div class="field">
+      <label for="company">Company</label>
+      <select id="company" name="company"><option value="">All companies</option></select>
+    </div>
+    <div class="field">
+      <label for="type">Type</label>
+      <select id="type" name="type">
+        <option value="">Job + Internship</option>
+        <option value="Job">Full-time job</option>
+        <option value="Internship">Internship</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="department">Department</label>
+      <select id="department" name="department"><option value="">All departments</option></select>
+    </div>
+    <div class="field">
+      <label for="minPackage">Min. package</label>
+      <select id="minPackage" name="minPackage">
+        <option value="">Any</option>
+        <option value="5">₹5 LPA and above</option>
+        <option value="8">₹8 LPA and above</option>
+        <option value="10">₹10 LPA and above</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost" type="button" id="clear">Clear</button>
+  </form>
+
+  <div class="row-between" style="margin-bottom:12px">
+    <span class="text-sm muted" id="count">Loading approved openings…</span>
+    <span class="text-sm muted" id="elig-note"></span>
+  </div>
+
+  <div id="list" aria-live="polite">
+    <div class="job-card"><div class="skel-row" style="border:0"><div class="skel skel-line" style="flex:3;height:16px"></div><div class="skel skel-line"></div></div></div>
+    <div class="job-card"><div class="skel-row" style="border:0"><div class="skel skel-line" style="flex:3;height:16px"></div><div class="skel skel-line"></div></div></div>
+    <div class="job-card"><div class="skel-row" style="border:0"><div class="skel skel-line" style="flex:3;height:16px"></div><div class="skel skel-line"></div></div></div>
+  </div>
+
+  <div id="pager"></div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  var user = AUTH.guard('student');
+  AUTH.shell('student', 'jobs');
+  document.getElementById('main').hidden = false;
+
+  var PER_PAGE = 6;
+  var state = { q: '', company: '', type: '', department: '', minPackage: '', page: 1 };
+  var rowsCache = [], appliedIds = [];
+  var form = document.getElementById('filters');
+  var listEl = document.getElementById('list');
+  var pagerEl = document.getElementById('pager');
+
+  function card(r) {
+    var e = r.eligibility || { eligible: false, reasons: [] };
+    var applied = appliedIds.indexOf(r.job.id) !== -1;
+    var d = UI.daysLeft(r.job.deadline);
+    return '<a class="job-card" href="job-detail.html?id=' + r.job.id + '">' +
+      '<div class="job-card-top">' +
+        '<div class="grow">' +
+          '<div class="row" style="gap:8px;margin-bottom:6px">' + UI.badge(r.job.type) +
+            (applied ? UI.badge('applied', 'Applied') : '') +
+            (d != null && d >= 0 && d <= 10 ? '<span class="badge badge-pending">' + d + 'd left</span>' : '') +
+          '</div>' +
+          '<h3>' + UI.esc(r.job.title) + '</h3>' +
+          '<div class="job-meta">' +
+            '<span>' + UI.esc(r.company ? r.company.name : '—') + '</span>' +
+            '<span>' + UI.icon('pin', 14) + UI.esc(r.job.location) + '</span>' +
+            '<span>' + UI.icon('users', 14) + UI.esc((r.job.departments || []).join(', ')) + '</span>' +
+            '<span>' + UI.icon('shield', 14) + 'Min CGPA ' + Number(r.job.minCgpa).toFixed(1) + '</span>' +
+          '</div>' +
+          '<div class="elig-chip ' + (e.eligible ? 'elig-yes' : 'elig-no') + '">' +
+            UI.icon(e.eligible ? 'check' : 'x', 13) +
+            (e.eligible ? 'You are eligible' : UI.esc(e.reasons[0] ? e.reasons[0].message : 'Not eligible')) +
+          '</div>' +
+        '</div>' +
+        '<div class="job-side">' + UI.esc(r.packageLabel) +
+          '<div class="text-xs muted" style="font-weight:500;font-family:var(--font-text)">Closes ' + UI.fmtDate(r.job.deadline) + '</div>' +
+        '</div>' +
+      '</div></a>';
+  }
+
+  function render() {
+    var filtered = rowsCache.filter(function (r) {
+      if (state.minPackage && (r.job.type === 'Internship' || Number(r.job.packageLpa) < Number(state.minPackage))) return false;
+      return true;
+    });
+    var pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    if (state.page > pages) state.page = pages;
+    var slice = filtered.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+
+    document.getElementById('count').textContent = filtered.length +
+      (filtered.length === 1 ? ' approved opening' : ' approved openings') +
+      (state.q ? ' matching “' + state.q + '”' : '');
+    var elig = rowsCache.filter(function (r) { return r.eligibility && r.eligibility.eligible; }).length;
+    document.getElementById('elig-note').textContent = elig + ' match your profile';
+
+    listEl.innerHTML = slice.length ? slice.map(card).join('') : UI.emptyState({
+      icon: 'search', title: 'No openings match these filters',
+      text: 'Try a wider package band or clear the department filter. New roles are approved every Tuesday and Friday.',
+      action: 'Clear filters'
+    });
+    var act = listEl.querySelector('[data-empty-action]');
+    if (act) act.addEventListener('click', clearFilters);
+
+    pagerEl.innerHTML = UI.pagination({ page: state.page, pages: pages, total: filtered.length, perPage: PER_PAGE });
+    UI.bindPagination(pagerEl, { page: state.page, pages: pages }, function (p) {
+      state.page = p; render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  function load() {
+    UI.showSkeleton(listEl, 4, 3);
+    Promise.all([API.listJobs({
+      q: state.q, company: state.company, type: state.type,
+      department: state.department, minPackage: state.minPackage
+    }), API.myApplications()]).then(function (pair) {
+      rowsCache = pair[0];
+      appliedIds = pair[1].map(function (r) { return r.job.id; });
+      UI.hideSkeleton(listEl);
+      render();
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  function clearFilters() {
+    form.reset();
+    state = { q: '', company: '', type: '', department: '', minPackage: '', page: 1 };
+    load();
+  }
+
+  var timer;
+  form.addEventListener('input', function (e) {
+    var name = e.target.name;
+    if (!name) return;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      state[name] = String(e.target.value || '').trim();
+      state.page = 1;
+      load();
+    }, name === 'q' ? 300 : 0);
+  });
+  form.addEventListener('submit', function (e) { e.preventDefault(); });
+  document.getElementById('clear').addEventListener('click', clearFilters);
+
+  Promise.all([API.listCompaniesPublic(), API.myApplications()]).then(function (pair) {
+    var sel = document.getElementById('company');
+    pair[0].forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c.id; o.textContent = c.name; sel.appendChild(o);
+    });
+    var dsel = document.getElementById('department');
+    API.DEPARTMENTS.forEach(function (d) {
+      var o = document.createElement('option');
+      o.value = d; o.textContent = d; dsel.appendChild(o);
+    });
+    if (user.branch) dsel.value = '';
+    load();
+  }).catch(function (err) { UI.reportError(err); });
+</script>
+</body>
+</html>

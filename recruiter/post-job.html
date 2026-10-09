@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post an opening · Recruiter portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Post an opening</h1>
+      <p>Submissions go to the placement cell as <strong>Pending</strong>. Students see the posting only after both your company and the posting are approved.</p>
+    </div>
+    <a class="btn btn-outline" href="dashboard.html">Back to dashboard</a>
+  </div>
+
+  <div id="gate" style="margin-bottom:20px"></div>
+
+  <div class="detail-layout">
+    <form class="card card-pad" id="job-form" novalidate>
+      <div class="field">
+        <label for="title">Role title <span class="req">*</span></label>
+        <input type="text" id="title" name="title" placeholder="Software Engineer — Graduate Trainee">
+        <p class="field-error">Role title is required.</p>
+      </div>
+
+      <fieldset>
+        <legend>Opening type <span class="req">*</span></legend>
+        <label class="check"><input type="radio" name="type" value="Job" checked> <span><strong>Full-time job</strong> — package quoted in LPA</span></label>
+        <label class="check"><input type="radio" name="type" value="Internship"> <span><strong>Internship</strong> — stipend quoted per month</span></label>
+      </fieldset>
+
+      <div class="grid-2">
+        <div class="field" id="pkg-field">
+          <label for="packageLpa" id="pkg-label">Annual package (LPA) <span class="req">*</span></label>
+          <input type="number" id="packageLpa" name="packageLpa" step="0.1" min="0" placeholder="8.5">
+          <p class="field-error">Enter a package greater than 0.</p>
+        </div>
+        <div class="field">
+          <label for="location">Location <span class="req">*</span></label>
+          <input type="text" id="location" name="location" placeholder="Bengaluru / Remote / Hybrid">
+          <p class="field-error">Location is required.</p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="field">
+          <label for="openings">Openings <span class="req">*</span></label>
+          <input type="number" id="openings" name="openings" min="1" value="1">
+          <p class="field-error">At least 1.</p>
+        </div>
+        <div class="field">
+          <label for="minCgpa">Minimum CGPA <span class="req">*</span></label>
+          <input type="number" id="minCgpa" name="minCgpa" step="0.1" min="0" max="10" placeholder="7.5">
+          <p class="field-error">Between 0 and 10.</p>
+        </div>
+        <div class="field">
+          <label for="deadline">Application deadline <span class="req">*</span></label>
+          <input type="date" id="deadline" name="deadline">
+          <p class="field-error">Pick a deadline.</p>
+        </div>
+      </div>
+
+      <fieldset id="dept-field">
+        <legend>Allowed departments <span class="req">*</span></legend>
+        <div class="row row-wrap" id="depts"></div>
+        <p class="field-hint" style="margin-top:8px">Students outside this list are blocked at the API level when they try to apply.</p>
+        <p class="field-error">Select at least one department.</p>
+      </fieldset>
+
+      <div class="field">
+        <label for="description">Role description <span class="req">*</span></label>
+        <textarea id="description" name="description" rows="5" placeholder="Team, what the person works on in month one, training structure…"></textarea>
+        <p class="field-hint">At least 30 characters. Avoid generic copy — students compare postings side by side.</p>
+        <p class="field-error">Write at least 30 characters.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="field">
+          <label for="responsibilities">Responsibilities</label>
+          <textarea id="responsibilities" name="responsibilities" rows="4" placeholder="One per line"></textarea>
+          <p class="field-hint">One item per line.</p>
+          <p class="field-error">—</p>
+        </div>
+        <div class="field">
+          <label for="skills">Skills screened for</label>
+          <textarea id="skills" name="skills" rows="4" placeholder="Java, SQL, Git"></textarea>
+          <p class="field-hint">Comma separated.</p>
+          <p class="field-error">—</p>
+        </div>
+      </div>
+
+      <div class="row" style="gap:12px">
+        <button class="btn btn-primary" type="submit" id="submit">Submit for approval</button>
+        <span class="text-sm muted">You can edit and resubmit after a rejection.</span>
+      </div>
+    </form>
+
+    <aside class="sticky-col stack-4">
+      <section class="card card-pad">
+        <h3 style="font-size:16px">Review criteria</h3>
+        <ol class="text-sm muted" style="padding-left:18px;margin:0">
+          <li>Company profile approved by the cell</li>
+          <li>Package or stipend stated as a number, not "negotiable"</li>
+          <li>CGPA cut-off justified if above 8.0</li>
+          <li>Deadline at least 7 days out</li>
+        </ol>
+      </section>
+      <section class="card card-pad">
+        <h3 style="font-size:16px">After you submit</h3>
+        <div class="deflist">
+          <div><dt>Status</dt><dd id="side-status">Pending</dd></div>
+          <div><dt>Visible to students</dt><dd>After approval</dd></div>
+          <div><dt>Typical review</dt><dd>2 working days</dd></div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('recruiter');
+  AUTH.shell('recruiter', 'post-job');
+  document.getElementById('main').hidden = false;
+
+  var form = document.getElementById('job-form');
+
+  // department checkboxes
+  document.getElementById('depts').innerHTML = API.DEPARTMENTS.map(function (d, i) {
+    return '<label class="check" style="width:150px;margin-bottom:0">' +
+      '<input type="checkbox" name="departments" value="' + d + '" id="dept-' + i + '"> <span>' + d + '</span></label>';
+  }).join('');
+
+  function syncType() {
+    var type = form.querySelector('[name="type"]:checked').value;
+    var isJob = type === 'Job';
+    document.getElementById('pkg-label').innerHTML = (isJob ? 'Annual package (LPA)' : 'Monthly stipend (₹)') + ' <span class="req">*</span>';
+    var input = document.getElementById('packageLpa');
+    input.id = isJob ? 'packageLpa' : 'stipend';
+    input.name = isJob ? 'packageLpa' : 'stipend';
+    input.step = isJob ? '0.1' : '500';
+    input.placeholder = isJob ? '8.5' : '25000';
+    if (!isJob && Number(input.value) && Number(input.value) < 100) input.value = '';
+    if (isJob && Number(input.value) > 500) input.value = '';
+  }
+  Array.prototype.forEach.call(form.querySelectorAll('[name="type"]'), function (r) {
+    r.addEventListener('change', syncType);
+  });
+  syncType();
+
+  // default deadline ~4 weeks out
+  var dl = new Date(); dl.setDate(dl.getDate() + 28);
+  form.deadline.value = dl.toISOString().slice(0, 10);
+
+  // company gate
+  API.getMyCompany().then(function (co) {
+    var gate = document.getElementById('gate');
+    if (!co || !co.name) {
+      gate.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('alert', 18) +
+        '<span><strong>No company profile on file.</strong> Submit your company details first — postings raised without one are rejected by the API. <a href="company.html">Go to company profile</a>.</span></div>';
+    } else if (co.status !== 'approved') {
+      gate.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('clock', 18) +
+        '<span><strong>' + UI.esc(co.name) + ' is ' + co.status + '.</strong> You can submit this posting, but it stays hidden from students until the company is approved. <a href="company.html">View profile</a>.</span></div>';
+    } else {
+      gate.innerHTML = '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>' + UI.esc(co.name) + ' is approved.</strong> This posting will be visible to students as soon as the cell approves it.</span></div>';
+    }
+  }).catch(function (err) { UI.reportError(err); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var type = form.querySelector('[name="type"]:checked').value;
+    var depts = Array.prototype.slice.call(form.querySelectorAll('[name="departments"]:checked')).map(function (c) { return c.value; });
+
+    var rules = {
+      title: { required: true },
+      location: { required: true },
+      openings: { required: true, number: true, min: 1 },
+      minCgpa: { required: true, number: true, min: 0, max: 10 },
+      deadline: { required: true },
+      description: { required: true, minlength: 30 }
+    };
+    rules[type === 'Job' ? 'packageLpa' : 'stipend'] = { required: true, number: true, min: 1 };
+    if (!UI.validate(form, rules)) return;
+    if (!depts.length) {
+      document.getElementById('dept-field').classList.add('has-error');
+      document.getElementById('dept-0').focus();
+      return;
+    }
+    document.getElementById('dept-field').classList.remove('has-error');
+
+    var payload = {
+      title: form.title.value.trim(),
+      type: type,
+      description: form.description.value.trim(),
+      responsibilities: form.responsibilities.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean),
+      skills: form.skills.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+      location: form.location.value.trim(),
+      deadline: form.deadline.value,
+      minCgpa: Number(form.minCgpa.value),
+      departments: depts,
+      openings: Number(form.openings.value),
+      packageLpa: type === 'Job' ? Number(form.packageLpa.value) : 0,
+      stipend: type === 'Internship' ? Number(form.stipend.value) : 0
+    };
+
+    var restore = UI.busy(document.getElementById('submit'), 'Submitting…');
+    API.createJob(payload).then(function (job) {
+      UI.toast('“' + job.title + '” submitted. Status: pending approval.');
+      location.href = 'applicants.html?jobId=' + job.id;
+    }).catch(function (err) {
+      restore();
+      UI.reportError(err, form);
+      if (err.details && err.details.field === 'departments') {
+        document.getElementById('dept-field').classList.add('has-error');
+      }
+    });
+  });
+</script>
+</body>
+</html>

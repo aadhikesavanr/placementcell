@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div class="auth-wrap">
+  <div class="auth-form-side">
+    <div class="auth-card">
+      <a class="brand" href="index.html" style="margin-bottom:32px">
+        <span class="brand-mark">CP</span>
+        <span>CampusPlace<br><span class="brand-sub">AIT · Training &amp; Placement</span></span>
+      </a>
+      <h1>Sign in</h1>
+      <p class="muted" style="font-size:14px">Use the account issued to you by the placement cell. Students and recruiters can also self-register.</p>
+
+      <form id="login-form" novalidate style="margin-top:24px">
+        <div class="field">
+          <label for="email">Email address <span class="req">*</span></label>
+          <input type="email" id="email" name="email" autocomplete="username" placeholder="you@vit.demo" required>
+          <p class="field-error">Enter a valid email address.</p>
+        </div>
+        <div class="field">
+          <label for="password">Password <span class="req">*</span></label>
+          <input type="password" id="password" name="password" autocomplete="current-password" placeholder="••••••••" required>
+          <p class="field-error">Password is required.</p>
+        </div>
+        <div class="row-between" style="margin-bottom:16px">
+          <label class="check" style="margin:0"><input type="checkbox" id="show-pass"> Show password</label>
+          <span class="text-xs muted">Placement cell accounts are issued manually</span>
+        </div>
+        <button class="btn btn-primary btn-block" type="submit" id="submit-btn">Sign in</button>
+        <p class="text-sm muted" style="margin-top:16px">New here? <a href="register.html">Create a student or recruiter account</a></p>
+      </form>
+
+      <div class="demo-box">
+        <h4>Demo accounts — click to fill</h4>
+        <div class="demo-row"><span><strong>Student</strong> <code>student@vit.demo / Student@123</code></span><button class="btn btn-outline btn-sm" type="button" data-demo="student@vit.demo|Student@123">Use</button></div>
+        <div class="demo-row"><span><strong>Recruiter</strong> <code>recruiter@acme.demo / Recruiter@123</code></span><button class="btn btn-outline btn-sm" type="button" data-demo="recruiter@acme.demo|Recruiter@123">Use</button></div>
+        <div class="demo-row"><span><strong>Admin</strong> <code>admin@placement.demo / Admin@123</code></span><button class="btn btn-outline btn-sm" type="button" data-demo="admin@placement.demo|Admin@123">Use</button></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="auth-side">
+    <div class="hero-shapes" aria-hidden="true"><span class="shape shape-a"></span><span class="shape shape-c"></span></div>
+    <h3>What you get after signing in</h3>
+    <ul>
+      <li><span id="ic1"></span><span><strong>Students</strong> — openings filtered to your branch and CGPA, with a clear reason when you do not qualify.</span></li>
+      <li><span id="ic2"></span><span><strong>Recruiters</strong> — your company and postings under review, plus a bulk applicant pipeline.</span></li>
+      <li><span id="ic3"></span><span><strong>Placement cell</strong> — approval queues, overview stats and a searchable audit trail.</span></li>
+    </ul>
+    <div class="season-card" style="margin-top:32px">
+      <h3>Before you sign in</h3>
+      <ul style="border-top:0;padding-top:0;margin-top:0">
+        <li><span>2026 batch registration</span><strong>closes 30 Nov</strong></li>
+        <li><span>Resume format</span><strong>one page, PDF link</strong></li>
+        <li><span>Company review time</span><strong>~2 working days</strong></li>
+      </ul>
+    </div>
+  </aside>
+</div>
+
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  document.getElementById('ic1').innerHTML = UI.icon('briefcase', 18);
+  document.getElementById('ic2').innerHTML = UI.icon('building', 18);
+  document.getElementById('ic3').innerHTML = UI.icon('shield', 18);
+
+  var form = document.getElementById('login-form');
+  var submitBtn = document.getElementById('submit-btn');
+
+  document.getElementById('show-pass').addEventListener('change', function (e) {
+    document.getElementById('password').type = e.target.checked ? 'text' : 'password';
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-demo]'), function (btn) {
+    btn.addEventListener('click', function () {
+      var parts = btn.getAttribute('data-demo').split('|');
+      form.email.value = parts[0];
+      form.password.value = parts[1];
+      UI.clearErrors(form);
+      form.email.focus();
+    });
+  });
+
+  // ?role=student pre-selects that demo account
+  var roleParam = new URLSearchParams(location.search).get('role');
+  if (roleParam === 'recruiter') form.email.value = 'recruiter@acme.demo';
+  if (roleParam === 'admin') form.email.value = 'admin@placement.demo';
+  if (roleParam === 'student') form.email.value = 'student@vit.demo';
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!UI.validate(form, {
+      email: { required: true, email: true },
+      password: { required: true }
+    })) return;
+
+    var restore = UI.busy(submitBtn, 'Signing in…');
+    API.login(form.email.value.trim(), form.password.value).then(function (user) {
+      var next = new URLSearchParams(location.search).get('next');
+      location.href = next ? decodeURIComponent(next) : ({ student: 'student/dashboard.html', recruiter: 'recruiter/dashboard.html', admin: 'admin/dashboard.html' })[user.role];
+    }).catch(function (err) {
+      restore();
+      UI.reportError(err, form);
+      if (err.status === 401) UI.toast('Check the demo credentials listed below the form.', 'warn');
+    });
+  });
+
+  AUTH.boot().then(function () {
+    var u = API.currentUser();
+    if (u) location.replace(({ student: 'student/dashboard.html', recruiter: 'recruiter/dashboard.html', admin: 'admin/dashboard.html' })[u.role] || 'index.html');
+  });
+</script>
+</body>
+</html>

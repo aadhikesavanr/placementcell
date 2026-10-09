@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening details · Student portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <p class="text-sm"><a href="jobs.html" id="back">← All openings</a></p>
+
+  <div class="detail-layout" id="detail" style="margin-top:12px">
+    <div class="stack-4">
+      <div class="skel" style="height:120px"></div>
+      <div class="skel" style="height:200px"></div>
+      <div class="skel" style="height:160px"></div>
+    </div>
+    <div class="skel" style="height:260px"></div>
+  </div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  var user = AUTH.guard('student');
+  AUTH.shell('student', 'jobs');
+  document.getElementById('main').hidden = false;
+
+  var id = new URLSearchParams(location.search).get('id');
+  var data = null;
+
+  function eligPanel(e, applied) {
+    if (applied) {
+      return '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>Application submitted.</strong> Track every stage on My applications. The recruiter updates your status after screening.</span></div>';
+    }
+    if (e.eligible) {
+      return '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>You are eligible.</strong> CGPA ' + Number(user.cgpa).toFixed(2) +
+        ' meets the ' + Number(data.job.minCgpa).toFixed(1) + ' cut-off and ' + UI.esc(user.branch) + ' is on the allowed list.</span></div>';
+    }
+    return '<div class="panel-note panel-note-bad">' + UI.icon('alert', 18) +
+      '<span><strong>You are not eligible because:</strong><ul style="margin:6px 0 0;padding-left:18px">' +
+      e.reasons.map(function (r) { return '<li>' + UI.esc(r.message) + '</li>'; }).join('') +
+      '</ul></span></div>';
+  }
+
+  function render() {
+    var j = data.job, co = data.company;
+    var e = data.eligibility;
+    var d = UI.daysLeft(j.deadline);
+    var closed = d != null && d < 0;
+
+    document.getElementById('detail').innerHTML =
+      '<div class="stack-4">' +
+        '<section class="card card-pad">' +
+          '<div class="row" style="gap:8px;margin-bottom:10px">' + UI.badge(j.type) +
+            UI.badge(j.status, j.status === 'approved' ? 'Approved by placement cell' : j.status) +
+            (closed ? UI.badge('expired', 'Deadline passed') : '') + '</div>' +
+          '<h1 style="font-size:28px;margin-bottom:6px">' + UI.esc(j.title) + '</h1>' +
+          '<div class="job-meta" style="font-size:14px">' +
+            '<span>' + UI.icon('building', 15) + UI.esc(co ? co.name : '—') + '</span>' +
+            '<span>' + UI.icon('pin', 15) + UI.esc(j.location) + '</span>' +
+            '<span>' + UI.icon('rupee', 15) + UI.esc(data.packageLabel) + '</span>' +
+            '<span>' + UI.icon('users', 15) + j.openings + ' opening' + (j.openings > 1 ? 's' : '') + '</span>' +
+          '</div>' +
+          '<div class="kv" style="margin-top:24px">' +
+            '<div><div class="k">Minimum CGPA</div><div class="v">' + Number(j.minCgpa).toFixed(1) + '</div></div>' +
+            '<div><div class="k">Allowed departments</div><div class="v">' + UI.esc((j.departments || []).join(', ')) + '</div></div>' +
+            '<div><div class="k">Application deadline</div><div class="v">' + UI.fmtDate(j.deadline) + (d != null && d >= 0 ? ' · ' + d + ' day' + (d === 1 ? '' : 's') + ' left' : '') + '</div></div>' +
+            '<div><div class="k">Applications received</div><div class="v">' + data.applicantCount + '</div></div>' +
+          '</div>' +
+        '</section>' +
+
+        '<section class="card card-pad">' +
+          '<h3>About the role</h3>' +
+          '<p>' + UI.esc(j.description) + '</p>' +
+          (j.responsibilities && j.responsibilities.length ?
+            '<h4 style="margin-top:20px">What you will do</h4><ul>' +
+            j.responsibilities.map(function (r) { return '<li>' + UI.esc(r) + '</li>'; }).join('') + '</ul>' : '') +
+          (j.skills && j.skills.length ?
+            '<h4 style="margin-top:20px">Skills they screen for</h4><div class="row row-wrap" style="gap:8px">' +
+            j.skills.map(function (s) { return '<span class="chip">' + UI.esc(s) + '</span>'; }).join('') + '</div>' : '') +
+        '</section>' +
+
+        '<section class="card card-pad">' +
+          '<h3>About ' + UI.esc(co ? co.name : 'the company') + '</h3>' +
+          '<p class="muted text-sm">' + UI.esc(co ? co.about : '') + '</p>' +
+          '<dl class="deflist" style="margin-top:16px">' +
+            '<div><dt>Sector</dt><dd>' + UI.esc(co ? co.industry : '—') + '</dd></div>' +
+            '<div><dt>Location</dt><dd>' + UI.esc(co ? co.location : '—') + '</dd></div>' +
+            '<div><dt>Cell approval</dt><dd>' + UI.esc(co ? co.status : '—') + ' · reviewed ' + UI.fmtDate(co ? co.reviewedAt : null) + '</dd></div>' +
+          '</dl>' +
+        '</section>' +
+      '</div>' +
+
+      '<aside class="sticky-col stack-4">' +
+        '<section class="card card-pad">' +
+          '<h3 style="font-size:16px">Eligibility check</h3>' +
+          '<div id="elig" style="margin-bottom:16px">' + eligPanel(e, data.alreadyApplied) + '</div>' +
+          '<button class="btn btn-primary btn-block" type="button" id="apply" ' +
+            ((!e.eligible || data.alreadyApplied || closed) ? 'disabled' : '') + '>' +
+            (data.alreadyApplied ? 'Already applied' : closed ? 'Applications closed' : 'Apply now') + '</button>' +
+          '<p class="text-xs muted" style="margin-top:10px">Eligibility is enforced server-side. If anything changed since you loaded this page, the portal will tell you why the application was blocked.</p>' +
+        '</section>' +
+
+        '<section class="card card-pad">' +
+          '<h3 style="font-size:16px">What happens next</h3>' +
+          '<ol class="text-sm muted" style="padding-left:18px;margin:0">' +
+            '<li>Placement cell keeps this listing approved until ' + UI.fmtDate(j.deadline) + '</li>' +
+            '<li>Recruiter screens your profile within 5 working days</li>' +
+            '<li>Shortlist → interview → offer, tracked on your applications page</li>' +
+          '</ol>' +
+        '</section>' +
+      '</aside>';
+
+    var applyBtn = document.getElementById('apply');
+    if (applyBtn && !applyBtn.disabled) applyBtn.addEventListener('click', doApply);
+  }
+
+  function doApply() {
+    UI.confirmDialog({
+      title: 'Apply to ' + data.job.title + '?',
+      message: 'Your branch, CGPA, graduation year and resume link are shared with ' + (data.company ? data.company.name : 'the recruiter') + '.',
+      confirmText: 'Submit application'
+    }).then(function (ok) {
+      if (!ok) return;
+      var btn = document.getElementById('apply');
+      var restore = UI.busy(btn, 'Submitting…');
+      API.applyToJob(data.job.id).then(function () {
+        UI.toast('Application submitted. It now shows under My applications.');
+        location.href = 'applications.html';
+      }).catch(function (err) {
+        restore();
+        if (err.status === 403 && err.details && err.details.reasons) {
+          document.getElementById('elig').innerHTML =
+            '<div class="panel-note panel-note-bad">' + UI.icon('alert', 18) +
+            '<span><strong>Application blocked.</strong><ul style="margin:6px 0 0;padding-left:18px">' +
+            err.details.reasons.map(function (r) { return '<li>' + UI.esc(r.message) + '</li>'; }).join('') +
+            '</ul></span></div>';
+          btn.disabled = true;
+          UI.toast(err.message, 'error');
+        } else {
+          UI.reportError(err);
+        }
+      });
+    });
+  }
+
+  if (!id) {
+    document.getElementById('detail').innerHTML = UI.emptyState({
+      icon: 'alert', title: 'No opening selected', text: 'Pick an opening from the browse list to see its details.', action: 'Back to openings'
+    });
+    document.querySelector('[data-empty-action]').addEventListener('click', function () { location.href = 'jobs.html'; });
+  } else {
+    API.getJob(id).then(function (d) {
+      data = d;
+      document.title = d.job.title + ' · CampusPlace';
+      render();
+    }).catch(function (err) {
+      document.getElementById('detail').innerHTML = UI.emptyState({
+        icon: 'search', title: 'Opening not available', text: err.message, action: 'Back to openings'
+      });
+      var act = document.querySelector('[data-empty-action]');
+      if (act) act.addEventListener('click', function () { location.href = 'jobs.html'; });
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Recruiter portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Dashboard</h1>
+      <p id="subline">Loading your postings…</p>
+    </div>
+    <div class="btn-group">
+      <a class="btn btn-outline" href="company.html">Company profile</a>
+      <a class="btn btn-primary" href="post-job.html">Post an opening</a>
+    </div>
+  </div>
+
+  <div id="company-banner" style="margin-bottom:24px"></div>
+
+  <div class="grid-4" style="margin-bottom:24px" id="stats">
+    <div class="stat stat-accent-navy"><div class="stat-label">My postings</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-amber"><div class="stat-label">Awaiting approval</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-info"><div class="stat-label">Applicants</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-green"><div class="stat-label">Offers released</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+  </div>
+
+  <section class="card" aria-labelledby="h-postings">
+    <div class="card-head">
+      <h3 id="h-postings">My postings</h3>
+      <span class="text-sm muted" id="postings-count"></span>
+    </div>
+    <div id="postings">
+      <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div><div class="skel skel-line"></div></div>
+      <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div><div class="skel skel-line"></div></div>
+      <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div><div class="skel skel-line"></div></div>
+    </div>
+  </section>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('recruiter');
+  AUTH.shell('recruiter', 'dashboard');
+  document.getElementById('main').hidden = false;
+
+  function row(r) {
+    var j = r.job;
+    var d = UI.daysLeft(j.deadline);
+    return '<tr>' +
+      '<td><span class="cell-title">' + UI.esc(j.title) + '</span><br>' +
+        '<span class="cell-sub">' + UI.esc(j.location) + ' · ' + UI.esc((j.departments || []).join(', ')) +
+        ' · min CGPA ' + Number(j.minCgpa).toFixed(1) + '</span></td>' +
+      '<td>' + UI.badge(j.type) + '</td>' +
+      '<td class="num">' + UI.esc(r.packageLabel) + '</td>' +
+      '<td>' + UI.badge(j.status) + (j.status === 'rejected' && j.rejectionReason ?
+        '<div class="text-xs" style="color:var(--bad);max-width:240px;margin-top:4px">' + UI.esc(j.rejectionReason) + '</div>' : '') + '</td>' +
+      '<td class="num">' + r.applicantCount + '</td>' +
+      '<td class="num">' + r.shortlisted + '</td>' +
+      '<td class="num">' + r.offered + '</td>' +
+      '<td class="nowrap">' + (d != null && d >= 0 ? d + 'd left' : 'closed') + '</td>' +
+      '<td class="actions">' +
+        (r.applicantCount > 0 || j.status === 'approved'
+          ? '<a class="btn btn-outline btn-sm" href="applicants.html?jobId=' + j.id + '">Applicants</a>'
+          : '<span class="text-xs muted">—</span>') +
+      '</td>' +
+    '</tr>';
+  }
+
+  Promise.all([API.recruiterStats(), API.myJobs()]).then(function (pair) {
+    var s = pair[0], jobs = pair[1];
+    var co = s.company;
+
+    document.getElementById('subline').textContent = co && co.name
+      ? co.name + ' · ' + jobs.length + ' posting' + (jobs.length === 1 ? '' : 's') + ' · ' + s.applicants + ' applicant' + (s.applicants === 1 ? '' : 's')
+      : 'Set up your company profile to start posting.';
+
+    var banner = document.getElementById('company-banner');
+    if (!co || !co.name) {
+      banner.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('alert', 18) +
+        '<span><strong>No company profile yet.</strong> The placement cell cannot review openings until your company details are on file. ' +
+        '<a href="company.html">Complete the profile</a>.</span></div>';
+    } else if (co.status === 'pending') {
+      banner.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('clock', 18) +
+        '<span><strong>' + UI.esc(co.name) + ' is pending approval.</strong> You can draft postings, but they only become visible to students after the cell approves both the company and the posting. ' +
+        '<a href="company.html">Review company details</a>.</span></div>';
+    } else if (co.status === 'rejected') {
+      banner.innerHTML = '<div class="panel-note panel-note-bad">' + UI.icon('alert', 18) +
+        '<span><strong>Company profile rejected.</strong> ' + UI.esc(co.rejectionReason || '') + ' <a href="company.html">Update and resubmit</a>.</span></div>';
+    } else {
+      banner.innerHTML = '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>' + UI.esc(co.name) + ' is approved.</strong> New postings you submit usually clear review within two working days.</span></div>';
+    }
+
+    var cards = document.querySelectorAll('#stats .stat');
+    [jobs.length, s.pending, s.applicants, s.offers].forEach(function (v, i) {
+      cards[i].querySelector('.stat-value').textContent = v;
+    });
+    UI.statSub(cards[3], s.interview + ' in interview round');
+
+    document.getElementById('postings-count').textContent = jobs.length + ' posting' + (jobs.length === 1 ? '' : 's');
+    var host = document.getElementById('postings');
+    if (!jobs.length) {
+      host.innerHTML = UI.emptyState({
+        icon: 'briefcase', title: 'No postings yet',
+        text: 'Post your first role — title, package, departments and CGPA cut-off. It stays hidden from students until the cell approves it.',
+        action: 'Post an opening'
+      });
+      var act = host.querySelector('[data-empty-action]');
+      if (act) act.addEventListener('click', function () { location.href = 'post-job.html'; });
+      return;
+    }
+    host.innerHTML = '<div class="table-wrap" style="border:0"><table class="data">' +
+      '<thead><tr><th>Opening</th><th>Type</th><th class="num">Package</th><th>Status</th>' +
+      '<th class="num">Applicants</th><th class="num">Shortlisted</th><th class="num">Offers</th><th>Deadline</th><th></th></tr></thead>' +
+      '<tbody>' + jobs.map(row).join('') + '</tbody></table></div>';
+  }).catch(function (err) { UI.reportError(err); });
+</script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My profile · Student portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>My profile</h1>
+      <p>This is what recruiters see when they open your application. Keep the CGPA current — it is what gates eligibility.</p>
+    </div>
+    <span class="badge badge-pending" id="completeness">—</span>
+  </div>
+
+  <div class="detail-layout">
+    <form class="card card-pad" id="profile-form" novalidate>
+      <h3>Academic details</h3>
+      <div class="grid-2">
+        <div class="field">
+          <label for="branch">Branch <span class="req">*</span></label>
+          <select id="branch" name="branch">
+            <option value="">Select branch</option>
+            <option>CSE</option><option>IT</option><option>ECE</option>
+            <option>EEE</option><option>Mechanical</option><option>Civil</option>
+          </select>
+          <p class="field-error">Select your branch.</p>
+        </div>
+        <div class="field">
+          <label for="gradYear">Graduation year <span class="req">*</span></label>
+          <select id="gradYear" name="gradYear">
+            <option>2026</option><option>2027</option><option>2028</option>
+          </select>
+          <p class="field-error">Select your batch.</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="cgpa">CGPA <span class="req">*</span></label>
+          <input type="number" step="0.01" min="0" max="10" id="cgpa" name="cgpa">
+          <p class="field-hint">Used for the eligibility check on every opening.</p>
+          <p class="field-error">CGPA must be between 0 and 10.</p>
+        </div>
+        <div class="field">
+          <label for="phone">Contact number</label>
+          <input type="text" id="phone" name="phone" placeholder="+91 99001 22331">
+          <p class="field-error">Enter a phone number.</p>
+        </div>
+      </div>
+
+      <hr>
+      <h3>Application documents</h3>
+      <div class="field">
+        <label for="resumeLink">Resume link <span class="req">*</span></label>
+        <input type="url" id="resumeLink" name="resumeLink" placeholder="https://drive.example.com/your-resume">
+        <p class="field-hint">One-page PDF. Applications are blocked until this is set.</p>
+        <p class="field-error">Must start with http:// or https://</p>
+      </div>
+      <div class="field">
+        <label for="skills">Skills</label>
+        <input type="text" id="skills" name="skills" placeholder="Java, React, SQL (comma separated)">
+        <p class="field-error">—</p>
+      </div>
+
+      <hr>
+      <h3>Account</h3>
+      <div class="grid-2">
+        <div class="field"><label for="name">Full name</label><input type="text" id="name" name="name"><p class="field-error">Name is required.</p></div>
+        <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" readonly></div>
+      </div>
+
+      <div class="row" style="gap:12px;margin-top:8px">
+        <button class="btn btn-primary" type="submit" id="save">Save profile</button>
+        <span class="text-sm muted" id="saved-at"></span>
+      </div>
+    </form>
+
+    <aside class="sticky-col stack-4">
+      <section class="card card-pad">
+        <h3 style="font-size:16px">Eligibility snapshot</h3>
+        <p class="text-sm muted">Based on your CGPA and branch, right now:</p>
+        <div id="snapshot"><p class="text-sm muted">Checking approved openings…</p></div>
+      </section>
+      <section class="card card-pad">
+        <h3 style="font-size:16px">Profile tips</h3>
+        <ul class="text-sm muted" style="margin:0;padding-left:18px">
+          <li>Recruiters filter by CGPA first — update it after every semester result.</li>
+          <li>Resume links must be viewable without a login (shared drive or portfolio).</li>
+          <li>Applications already submitted keep the details captured at that time.</li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  var user = AUTH.guard('student');
+  AUTH.shell('student', 'profile');
+  document.getElementById('main').hidden = false;
+
+  var form = document.getElementById('profile-form');
+
+  function fill(u) {
+    form.branch.value = u.branch || '';
+    form.gradYear.value = String(u.gradYear || 2026);
+    form.cgpa.value = u.cgpa != null ? u.cgpa : '';
+    form.phone.value = u.phone || '';
+    form.resumeLink.value = u.resumeLink || '';
+    form.skills.value = (u.skills || []).join(', ');
+    form.name.value = u.name || '';
+    form.email.value = u.email || '';
+    document.getElementById('completeness').textContent = 'Profile ' + API.profileCompleteness(u) + '% complete';
+  }
+  fill(user);
+
+  function refreshSnapshot() {
+    API.listJobs({}).then(function (rows) {
+      var probe = {
+        branch: form.branch.value,
+        cgpa: form.cgpa.value === '' ? 0 : Number(form.cgpa.value),
+        resumeLink: form.resumeLink.value.trim()
+      };
+      var ok = 0, blocked = {};
+      rows.forEach(function (r) {
+        var res = API.evaluateEligibility(r.job, probe);
+        if (res.eligible) ok++;
+        else res.reasons.forEach(function (reason) { blocked[reason.code] = (blocked[reason.code] || 0) + 1; });
+      });
+      var html = '<div class=\"row-between\" style=\"margin-bottom:12px\"><strong style=\"font-size:28px;font-family:var(--font-display)\">' + ok + '</strong><span class=\"text-sm muted\">of ' + rows.length + ' approved openings you qualify for</span></div>';
+      var labels = { cgpa: 'CGPA below the cut-off', department: 'Branch not on the allowed list', resume: 'Resume link missing', deadline: 'Deadline passed', not_open: 'Not published yet' };
+      html += Object.keys(blocked).length
+        ? '<ul class="text-sm" style="margin:0;padding-left:18px">' + Object.keys(blocked).map(function (k) {
+            return '<li class="muted">' + (labels[k] || k) + ' — ' + blocked[k] + ' opening' + (blocked[k] === 1 ? '' : 's') + '</li>';
+          }).join('') + '</ul>'
+        : '<p class="text-sm" style="color:var(--ok)">Everything approved so far is open to you.</p>';
+      document.getElementById('snapshot').innerHTML = html;
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  form.addEventListener('input', function () { clearTimeout(window._t); window._t = setTimeout(refreshSnapshot, 350); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!UI.validate(form, {
+      branch: { required: true },
+      gradYear: { required: true },
+      cgpa: { required: true, number: true, min: 0, max: 10 },
+      resumeLink: { required: true, url: true },
+      name: { required: true }
+    })) return;
+
+    var restore = UI.busy(document.getElementById('save'), 'Saving…');
+    API.updateProfile({
+      branch: form.branch.value,
+      gradYear: Number(form.gradYear.value),
+      cgpa: Number(form.cgpa.value),
+      phone: form.phone.value.trim(),
+      resumeLink: form.resumeLink.value.trim(),
+      skills: form.skills.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean),
+      name: form.name.value.trim()
+    }).then(function (u) {
+      user = u;
+      fill(u);
+      document.getElementById('saved-at').textContent = 'Saved ' + UI.relTime(new Date().toISOString());
+      UI.toast('Profile saved.');
+      refreshSnapshot();
+      restore();
+    }).catch(function (err) { restore(); UI.reportError(err, form); });
+  });
+
+  refreshSnapshot();
+</script>
+</body>
+</html>

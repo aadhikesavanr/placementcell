@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Company profile · Recruiter portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Company profile</h1>
+      <p>The placement cell reviews this once. Approving it unlocks posting; every decision is written to the audit log.</p>
+    </div>
+    <span id="status-badge" class="badge badge-pending">—</span>
+  </div>
+
+  <div id="status-note" style="margin-bottom:20px"></div>
+
+  <div class="detail-layout">
+    <form class="card card-pad" id="company-form" novalidate>
+      <div class="field">
+        <label for="name">Company name <span class="req">*</span></label>
+        <input type="text" id="name" name="name" placeholder="Acme Analytics Pvt Ltd">
+        <p class="field-error">Company name is required.</p>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="industry">Sector <span class="req">*</span></label>
+          <input type="text" id="industry" name="industry" placeholder="Data &amp; Analytics">
+          <p class="field-error">Sector is required.</p>
+        </div>
+        <div class="field">
+          <label for="location">Head office</label>
+          <input type="text" id="location" name="location" placeholder="Bengaluru, Karnataka">
+          <p class="field-error">—</p>
+        </div>
+      </div>
+      <div class="field">
+        <label for="website">Website</label>
+        <input type="url" id="website" name="website" placeholder="https://example.com">
+        <p class="field-error">Must start with http:// or https://</p>
+      </div>
+      <div class="field">
+        <label for="about">About the company <span class="req">*</span></label>
+        <textarea id="about" name="about" rows="4" placeholder="What the company builds, team size, hiring history at AIT…"></textarea>
+        <p class="field-hint">Shown to students on the opening detail page. At least 30 characters.</p>
+        <p class="field-error">Add at least 30 characters.</p>
+      </div>
+
+      <hr>
+      <h3>Hiring contact</h3>
+      <div class="grid-2">
+        <div class="field">
+          <label for="hrName">Contact person <span class="req">*</span></label>
+          <input type="text" id="hrName" name="hrName">
+          <p class="field-error">Contact person is required.</p>
+        </div>
+        <div class="field">
+          <label for="hrEmail">Contact email <span class="req">*</span></label>
+          <input type="email" id="hrEmail" name="hrEmail">
+          <p class="field-error">Enter a valid email address.</p>
+        </div>
+      </div>
+
+      <div class="row" style="gap:12px">
+        <button class="btn btn-primary" type="submit" id="save">Save and submit for approval</button>
+        <span class="text-sm muted" id="saved-at"></span>
+      </div>
+    </form>
+
+    <aside class="sticky-col stack-4">
+      <section class="card card-pad">
+        <h3 style="font-size:16px">Approval checklist</h3>
+        <ul class="text-sm muted" style="margin:0;padding-left:18px">
+          <li>Legal company name matching your PAN/GST record</li>
+          <li>Working website or product link</li>
+          <li>A named hiring contact who answers campus calls</li>
+          <li>CTC structure available on request for the 2026 batch</li>
+        </ul>
+      </section>
+      <section class="card card-pad">
+        <h3 style="font-size:16px">What approval unlocks</h3>
+        <p class="text-sm muted" style="margin:0">Until the cell approves this profile, postings you create stay in <strong>Pending</strong> and students cannot see them. Typical review time is two working days.</p>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('recruiter');
+  AUTH.shell('recruiter', 'company');
+  document.getElementById('main').hidden = false;
+
+  var form = document.getElementById('company-form');
+
+  function paint(co) {
+    if (!co) return;
+    form.name.value = co.name || '';
+    form.industry.value = co.industry || '';
+    form.location.value = co.location || '';
+    form.website.value = co.website || '';
+    form.about.value = co.about || '';
+    form.hrName.value = co.hrName || '';
+    form.hrEmail.value = co.hrEmail || '';
+
+    var badge = document.getElementById('status-badge');
+    badge.className = 'badge badge-' + (co.status === 'approved' ? 'approved' : co.status === 'rejected' ? 'rejected' : 'pending');
+    badge.textContent = co.status === 'approved' ? 'Approved' : co.status === 'rejected' ? 'Rejected' : co.name ? 'Pending approval' : 'Not submitted';
+
+    var note = document.getElementById('status-note');
+    if (co.status === 'approved') {
+      note.innerHTML = '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>Approved</strong> on ' + UI.fmtDate(co.reviewedAt) + '. Changes you save keep the approved status; material changes to the legal name are re-checked by the cell.</span></div>';
+    } else if (co.status === 'rejected') {
+      note.innerHTML = '<div class="panel-note panel-note-bad">' + UI.icon('alert', 18) +
+        '<span><strong>Rejected by the placement cell.</strong> ' + UI.esc(co.rejectionReason || '') +
+        ' Fix the details and save again to re-enter the queue.</span></div>';
+    } else if (co.name) {
+      note.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('clock', 18) +
+        '<span><strong>In review.</strong> Submitted ' + UI.fmtDate(co.updatedAt || co.createdAt) + '. The cell usually responds within two working days.</span></div>';
+    } else {
+      note.innerHTML = '<div class="panel-note panel-note-info">' + UI.icon('info', 18) +
+        '<span>Fill in the form and submit. Your profile enters the approval queue as <strong>Pending</strong>.</span></div>';
+    }
+    if (co.updatedAt) document.getElementById('saved-at').textContent = 'Last updated ' + UI.relTime(co.updatedAt);
+  }
+
+  API.getMyCompany().then(function (co) { paint(co || { status: 'pending' }); }).catch(function (err) { UI.reportError(err); });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!UI.validate(form, {
+      name: { required: true },
+      industry: { required: true },
+      website: { url: true },
+      about: { required: true, minlength: 30 },
+      hrName: { required: true },
+      hrEmail: { required: true, email: true }
+    })) return;
+
+    var restore = UI.busy(document.getElementById('save'), 'Submitting…');
+    API.saveCompany({
+      name: form.name.value, industry: form.industry.value, location: form.location.value,
+      website: form.website.value, about: form.about.value,
+      hrName: form.hrName.value, hrEmail: form.hrEmail.value
+    }).then(function (co) {
+      restore();
+      paint(co);
+      UI.toast(co.status === 'pending' && co.name ? 'Saved. The profile is in the placement cell approval queue.' : 'Company profile saved.');
+    }).catch(function (err) { restore(); UI.reportError(err, form); });
+  });
+</script>
+</body>
+</html>

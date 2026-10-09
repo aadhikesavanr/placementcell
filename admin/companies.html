@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Company approvals · Placement cell · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Company approvals</h1>
+      <p>Approving a company lets its openings enter the posting queue. Rejecting it withdraws any live postings and records your reason.</p>
+    </div>
+  </div>
+
+  <div class="filters" style="margin-bottom:16px">
+    <div class="field grow">
+      <label for="q">Search</label>
+      <input type="search" id="q" placeholder="Company name, sector or city">
+    </div>
+    <div class="field">
+      <label for="sort">Sort</label>
+      <select id="sort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="name">Name A–Z</option></select>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" id="tabs" style="margin-bottom:16px">
+    <button class="tab" role="tab" aria-selected="true" data-tab="pending">Pending <span class="count" id="c-pending">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="approved">Approved <span class="count" id="c-approved">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="rejected">Rejected <span class="count" id="c-rejected">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="">All <span class="count" id="c-all">0</span></button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Company</th><th>Sector</th><th>Recruiter</th><th class="num">Openings</th><th class="num">Applicants</th><th>Submitted</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="8"><div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="pager"></div>
+</main>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('admin');
+  AUTH.shell('admin', 'companies');
+  document.getElementById('main').hidden = false;
+
+  var PER_PAGE = 8;
+  var state = { tab: 'pending', q: '', sort: 'new', page: 1 };
+  var cache = [];
+
+  function decide(id, decision, name) {
+    UI.confirmDialog({
+      title: decision === 'approved' ? 'Approve ' + name + '?' : 'Reject ' + name + '?',
+      message: decision === 'approved'
+        ? 'The recruiter is notified and their postings can move into the opening queue.'
+        : 'Any live postings from this company drop back to pending. Your reason is stored with the audit entry.',
+      reasonLabel: decision === 'approved' ? null : 'Rejection reason',
+      confirmText: decision === 'approved' ? 'Approve company' : 'Reject company',
+      danger: decision !== 'approved'
+    }).then(function (reason) {
+      if (!reason) return;
+      var fn = decision === 'approved' ? API.approveCompany : API.rejectCompany;
+      fn(id, reason === true ? '' : reason).then(function () {
+        UI.toast(name + ' ' + decision + '. Audit entry written.');
+        load();
+      }).catch(function (err) { UI.reportError(err); });
+    });
+  }
+
+  function row(r) {
+    var c = r.company;
+    var reason = c.status === 'rejected' && c.rejectionReason
+      ? '<div class="text-xs" style="color:var(--bad);max-width:280px;margin-top:4px">' + UI.esc(c.rejectionReason) + '</div>' : '';
+    return '<tr>' +
+      '<td><span class="cell-title">' + UI.esc(c.name || 'Unnamed') + '</span><br><span class="cell-sub">' + UI.esc(c.location || '—') + '</span></td>' +
+      '<td>' + UI.esc(c.industry || '—') + '</td>' +
+      '<td>' + UI.esc(r.owner ? r.owner.name : '—') + '<div class="text-xs muted">' + UI.esc(c.hrEmail || '') + '</div></td>' +
+      '<td class="num">' + r.jobCount + '</td>' +
+      '<td class="num">' + r.applicantCount + '</td>' +
+      '<td class="nowrap">' + UI.fmtDate(c.createdAt) + '<div class="text-xs muted">' + UI.relTime(c.createdAt) + '</div></td>' +
+      '<td>' + UI.badge(c.status) + reason + '</td>' +
+      '<td class="actions">' +
+        '<button class="btn btn-outline btn-sm" type="button" data-view="' + c.id + '">View</button>' +
+        (c.status !== 'approved'
+          ? '<button class="btn btn-primary btn-sm" type="button" data-ok="' + c.id + '">Approve</button> ' +
+            '<button class="btn btn-outline btn-sm" type="button" data-no="' + c.id + '">Reject</button>'
+          : '') +
+      '</td></tr>';
+  }
+
+  function render() {
+    var rows = cache.filter(function (r) {
+      if (state.q) {
+        var hay = ((r.company.name || '') + ' ' + (r.company.industry || '') + ' ' + (r.company.location || '')).toLowerCase();
+        if (hay.indexOf(state.q.toLowerCase()) === -1) return false;
+      }
+      return true;
+    });
+    if (state.sort === 'name') rows.sort(function (a, b) { return (a.company.name || '').localeCompare(b.company.name || ''); });
+    else if (state.sort === 'old') rows.sort(function (a, b) { return String(a.company.createdAt).localeCompare(String(b.company.createdAt)); });
+
+    var pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    if (state.page > pages) state.page = pages;
+    var slice = rows.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+
+    document.getElementById('rows').innerHTML = slice.length ? slice.map(row).join('') :
+      '<tr><td colspan="8">' + UI.emptyState({
+        icon: 'building',
+        title: state.tab === 'pending' ? 'Approval queue is empty' : 'Nothing matches these filters',
+        text: state.tab === 'pending'
+          ? 'New recruiter profiles are reviewed within two working days. You will see them here first.'
+          : 'Change the tab or clear the search to see other records.'
+      }) + '</td></tr>';
+
+    document.getElementById('pager').innerHTML = UI.pagination(
+      { page: state.page, pages: pages, total: rows.length, perPage: PER_PAGE });
+    UI.bindPagination(document.getElementById('pager'), { page: state.page, pages: pages }, function (p) {
+      state.page = p; render();
+    });
+
+    UI.$$('[data-ok]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var r = cache.filter(function (x) { return x.company.id === b.getAttribute('data-ok'); })[0];
+        decide(r.company.id, 'approved', r.company.name);
+      });
+    });
+    UI.$$('[data-no]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var r = cache.filter(function (x) { return x.company.id === b.getAttribute('data-no'); })[0];
+        decide(r.company.id, 'rejected', r.company.name);
+      });
+    });
+    UI.$$('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var r = cache.filter(function (x) { return x.company.id === b.getAttribute('data-view'); })[0];
+        var c = r.company;
+        UI.openModal({
+          title: c.name || 'Company', wide: true,
+          body: '<div class="row" style="gap:8px;margin-bottom:16px">' + UI.badge(c.status) +
+            '<span class="text-sm muted">Submitted ' + UI.fmtDate(c.createdAt) + '</span></div>' +
+            '<dl class="deflist">' +
+              '<div><dt>Sector</dt><dd>' + UI.esc(c.industry || '—') + '</dd></div>' +
+              '<div><dt>Website</dt><dd>' + (c.website ? '<a href="' + UI.esc(c.website) + '" target="_blank" rel="noopener">' + UI.esc(c.website) + '</a>' : '—') + '</dd></div>' +
+              '<div><dt>Head office</dt><dd>' + UI.esc(c.location || '—') + '</dd></div>' +
+              '<div><dt>Hiring contact</dt><dd>' + UI.esc(c.hrName || '—') + ' · ' + UI.esc(c.hrEmail || '—') + '</dd></div>' +
+              '<div><dt>Recruiter account</dt><dd>' + UI.esc(r.owner ? r.owner.email : '—') + '</dd></div>' +
+              '<div><dt>Openings / applicants</dt><dd>' + r.jobCount + ' / ' + r.applicantCount + '</dd></div>' +
+            '</dl>' +
+            '<h4 style="margin-top:20px">About</h4><p class="text-sm muted">' + UI.esc(c.about || '—') + '</p>' +
+            (c.rejectionReason ? '<p class="panel-note panel-note-bad" style="margin-top:16px">' + UI.icon('alert', 16) + '<span><strong>Earlier rejection:</strong> ' + UI.esc(c.rejectionReason) + '</span></p>' : '')
+        });
+      });
+    });
+  }
+
+  function load() {
+    document.getElementById('rows').innerHTML = '<tr><td colspan="8">' + UI.skeletonRows(5, 4) + '</td></tr>';
+    API.listCompanies({ status: state.tab || undefined }).then(function (rows) {
+      cache = rows;
+      return API.listCompanies({}).then(function (all) {
+        ['pending', 'approved', 'rejected', 'all'].forEach(function (k) {
+          var n = k === 'all' ? all.length : all.filter(function (r) { return r.company.status === k; }).length;
+          document.getElementById('c-' + k).textContent = n;
+        });
+      });
+    }).then(function () {
+      render();
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  UI.$$('#tabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      state.tab = t.getAttribute('data-tab');
+      state.page = 1;
+      UI.$$('#tabs .tab').forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
+      load();
+    });
+  });
+  var qTimer;
+  document.getElementById('q').addEventListener('input', function (e) {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function () { state.q = e.target.value.trim(); state.page = 1; render(); }, 250);
+  });
+  document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; render(); });
+
+  load();
+</script>
+</body>
+</html>

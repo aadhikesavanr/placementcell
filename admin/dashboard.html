@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · Placement cell · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Placement cell overview</h1>
+      <p id="subline">Season 2025–26 · Phase 2 · approval queues and live counters.</p>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-outline" type="button" id="reset" data-action="reset-demo">Reset demo data</button>
+      <a class="btn btn-navy" href="audit-log.html">Open audit log</a>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:24px" id="stats">
+    <div class="stat stat-accent-amber"><div class="stat-label">Companies pending</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-amber"><div class="stat-label">Openings pending</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-navy"><div class="stat-label">Applications</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-green"><div class="stat-label">Offers / placements</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+  </div>
+
+  <div class="grid-2" style="gap:24px;align-items:start">
+    <div class="stack-4">
+      <section class="card">
+        <div class="card-head">
+          <h3>Companies awaiting approval</h3>
+          <a class="text-sm strong" href="companies.html">Queue</a>
+        </div>
+        <div id="co-queue" class="card-body">
+          <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>Openings awaiting approval</h3>
+          <a class="text-sm strong" href="jobs.html">Queue</a>
+        </div>
+        <div id="job-queue" class="card-body">
+          <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="stack-4">
+      <section class="card">
+        <div class="card-head">
+          <h3>Latest decisions</h3>
+          <a class="text-sm strong" href="audit-log.html">Full log</a>
+        </div>
+        <div id="audit" class="card-body"><p class="text-sm muted">Loading…</p></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h3>Season health</h3></div>
+        <div class="card-body" id="health"><p class="text-sm muted">Loading…</p></div>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('admin');
+  AUTH.shell('admin', 'dashboard');
+  document.getElementById('main').hidden = false;
+  document.getElementById('reset').addEventListener('click', function () { AUTH.doReset(); });
+
+  function decide(kind, id, decision, after) {
+    var isReject = decision === 'rejected';
+    UI.confirmDialog({
+      title: isReject ? 'Reject this ' + kind + '?' : 'Approve this ' + kind + '?',
+      message: isReject
+        ? 'The recruiter sees your reason and it is stored in the audit log with your reviewer ID.'
+        : 'Students and recruiters see the new status immediately. The decision is recorded in the audit log.',
+      reasonLabel: isReject ? 'Rejection reason' : null,
+      confirmText: isReject ? 'Reject' : 'Approve',
+      danger: isReject
+    }).then(function (reason) {
+      if (!reason) return;
+      var fn = kind === 'company'
+        ? (isReject ? API.rejectCompany : API.approveCompany)
+        : (isReject ? API.rejectJob : API.approveJob);
+      fn(id, reason === true ? '' : reason).then(function () {
+        UI.toast('Decision recorded: ' + kind + ' ' + decision + '.');
+        if (after) after();
+      }).catch(function (err) { UI.reportError(err); if (after) after(); });
+    });
+  }
+
+  function paintStats(s) {
+    var cards = document.querySelectorAll('#stats .stat');
+    [s.pendingCompanies, s.pendingJobs, s.applications, s.offers + ' / ' + s.placements]
+      .forEach(function (v, i) { cards[i].querySelector('.stat-value').textContent = v; });
+    UI.statSub(cards[0], s.approvedCompanies + ' approved on file');
+    UI.statSub(cards[1], s.approvedJobs + ' live · ' + s.rejectedJobs + ' rejected');
+    UI.statSub(cards[2], s.students + ' registered students');
+    UI.statSub(cards[3], s.recruiters + ' recruiters on the portal');
+
+    document.getElementById('subline').textContent =
+      s.students + ' students · ' + s.recruiters + ' recruiters · ' + s.approvedJobs + ' approved openings live';
+
+    document.getElementById('health').innerHTML =
+      '<div class="row-between" style="margin-bottom:8px"><span class="text-sm muted">Applications per approved opening</span><strong>' +
+      (s.approvedJobs ? (s.applications / s.approvedJobs).toFixed(1) : '0') + '</strong></div>' +
+      '<div class="row-between" style="margin-bottom:8px"><span class="text-sm muted">Offer conversion</span><strong>' +
+      (s.applications ? Math.round((s.offers / s.applications) * 100) + '%' : '0%') + '</strong></div>' +
+      '<div class="row-between" style="margin-bottom:8px"><span class="text-sm muted">Approval backlog</span><strong>' +
+      (s.pendingCompanies + s.pendingJobs) + ' items</strong></div>' +
+      '<div class="row-between"><span class="text-sm muted">Rejected openings (reason on file)</span><strong>' + s.rejectedJobs + '</strong></div>';
+  }
+
+  function paintQueues(s) {
+    var coHost = document.getElementById('co-queue');
+    if (!s.pendingCompanies) {
+      coHost.innerHTML = '<div class="empty" style="padding:24px 0"><div class="empty-mark">' + UI.icon('check', 20) + '</div>' +
+        '<h4>No companies waiting</h4><p>New recruiter profiles land here for review.</p></div>';
+    }
+    var jobHost = document.getElementById('job-queue');
+    if (!s.pendingJobs) {
+      jobHost.innerHTML = '<div class="empty" style="padding:24px 0"><div class="empty-mark">' + UI.icon('check', 20) + '</div>' +
+        '<h4>No openings waiting</h4><p>Postings submitted by recruiters appear here until reviewed.</p></div>';
+    }
+
+    Promise.all([API.listCompanies({ status: 'pending' }), API.listJobsAdmin({ status: 'pending' })]).then(function (pair) {
+      var cos = pair[0], jobs = pair[1];
+      if (cos.length) {
+        coHost.innerHTML = cos.slice(0, 4).map(function (r) {
+          return '<div class="row-between" style="gap:16px;padding:12px 0;border-bottom:1px dashed var(--line);align-items:flex-start">' +
+            '<div><strong>' + UI.esc(r.company.name) + '</strong><br>' +
+            '<span class="text-sm muted">' + UI.esc(r.company.industry) + ' · ' + UI.esc(r.company.location) +
+            ' · submitted ' + UI.relTime(r.company.createdAt) + '</span></div>' +
+            '<div class="btn-group">' +
+            '<button class="btn btn-primary btn-sm" type="button" data-co-ok="' + r.company.id + '">Approve</button>' +
+            '<button class="btn btn-outline btn-sm" type="button" data-co-no="' + r.company.id + '">Reject</button>' +
+            '</div></div>';
+        }).join('');
+      }
+      if (jobs.length) {
+        jobHost.innerHTML = jobs.slice(0, 4).map(function (r) {
+          return '<div class="row-between" style="gap:16px;padding:12px 0;border-bottom:1px dashed var(--line);align-items:flex-start">' +
+            '<div><strong>' + UI.esc(r.job.title) + '</strong><br>' +
+            '<span class="text-sm muted">' + UI.esc(r.company ? r.company.name : '—') + ' · ' + UI.esc(r.packageLabel) +
+            ' · min CGPA ' + Number(r.job.minCgpa).toFixed(1) + ' · ' + UI.esc((r.job.departments || []).join(', ')) + '</span></div>' +
+            '<div class="btn-group">' +
+            '<button class="btn btn-primary btn-sm" type="button" data-job-ok="' + r.job.id + '">Approve</button>' +
+            '<button class="btn btn-outline btn-sm" type="button" data-job-no="' + r.job.id + '">Reject</button>' +
+            '</div></div>';
+        }).join('');
+      }
+      wire();
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  function wire() {
+    UI.$$('[data-co-ok]').forEach(function (b) { b.addEventListener('click', function () { decide('company', b.getAttribute('data-co-ok'), 'approved', refresh); }); });
+    UI.$$('[data-co-no]').forEach(function (b) { b.addEventListener('click', function () { decide('company', b.getAttribute('data-co-no'), 'rejected', refresh); }); });
+    UI.$$('[data-job-ok]').forEach(function (b) { b.addEventListener('click', function () { decide('opening', b.getAttribute('data-job-ok'), 'approved', refresh); }); });
+    UI.$$('[data-job-no]').forEach(function (b) { b.addEventListener('click', function () { decide('opening', b.getAttribute('data-job-no'), 'rejected', refresh); }); });
+  }
+
+  function refresh() {
+    Promise.all([API.adminStats(), API.auditLog({ page: 1, perPage: 5 })]).then(function (pair) {
+      paintStats(pair[0]);
+      paintQueues(pair[0]);
+      var log = pair[1];
+      document.getElementById('audit').innerHTML = log.items.length ? log.items.map(function (e) {
+        return '<div style="padding:10px 0;border-bottom:1px dashed var(--line)">' +
+          '<div class="row" style="gap:8px">' + UI.badge(e.decision) +
+          '<span class="text-xs muted">' + UI.fmtDateTime(e.at) + '</span></div>' +
+          '<div class="text-sm" style="margin-top:4px"><strong>' + UI.esc(e.targetLabel) + '</strong></div>' +
+          '<div class="text-xs muted">' + UI.esc(e.reviewerName) + ' · ' + UI.esc(e.reason || '—') + '</div>' +
+        '</div>';
+      }).join('') : '<p class="text-sm muted">No decisions recorded yet.</p>';
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  refresh();
+</script>
+</body>
+</html>

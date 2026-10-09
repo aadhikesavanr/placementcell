@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CampusPlace — Placement &amp; Internship Portal · Aditya Institute of Technology</title>
+<meta name="description" content="Official placement and internship portal of the Training &amp; Placement Cell, Aditya Institute of Technology, Pune. Students apply to approved openings, recruiters post roles, the cell approves every list.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topnav">
+  <div class="topnav-inner">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">CP</span>
+      <span>CampusPlace<br><span class="brand-sub">AIT · Training &amp; Placement</span></span>
+    </a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-label="Open menu" id="nav-toggle"></button>
+    <nav class="topnav-links" aria-label="Main">
+      <a href="#process">How it works</a>
+      <a href="#openings">Openings</a>
+      <a href="#contact">Placement office</a>
+      <a href="login.html" class="btn btn-outline btn-sm" id="nav-signin">Sign in</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <div class="hero-shapes" aria-hidden="true">
+      <span class="shape shape-a"></span>
+      <span class="shape shape-b"></span>
+      <span class="shape shape-c"></span>
+      <span class="shape shape-d"></span>
+    </div>
+    <div class="hero-inner">
+      <div>
+        <span class="hero-eyebrow">Placement season 2025–26 · Phase 2 open</span>
+        <h1>Campus placements, run end to end — from approval to offer letter.</h1>
+        <p class="lede">
+          One portal for the three people who make a hire happen: the student applying, the recruiter
+          posting, and the placement cell approving. Every opening you see here has been signed off by
+          the cell — nothing else reaches your feed.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-light btn-lg" href="login.html?role=student">Student sign in</a>
+          <a class="btn btn-onnavy btn-lg" href="login.html?role=recruiter">Recruiter sign in</a>
+          <a class="btn btn-onnavy btn-lg" href="login.html?role=admin">Placement cell</a>
+        </div>
+        <p class="hero-note">Registration for the 2026 batch closes <strong>30 Nov 2026</strong>. Internship drives for the January window close 15 Dec.</p>
+      </div>
+      <div class="season-card">
+        <h3>Season snapshot · 2026 batch</h3>
+        <div class="season-grid">
+          <div><div class="k">214</div><div class="l">Offers released</div></div>
+          <div><div class="k">38</div><div class="l">Companies on board</div></div>
+          <div><div class="k">₹42 LPA</div><div class="l">Highest CTC so far</div></div>
+          <div><div class="k">76%</div><div class="l">Students placed</div></div>
+        </div>
+        <ul>
+          <li><span>Applications this week</span><strong>1,186</strong></li>
+          <li><span>Openings awaiting approval</span><strong id="hero-pending">—</strong></li>
+          <li><span>Next drive</span><strong>22 Oct · Acme Analytics</strong></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="stats" style="padding-bottom:0">
+    <div class="stat-strip">
+      <div><div class="k">214</div><div class="l">Offers released this season</div></div>
+      <div><div class="k">64</div><div class="l">Drives conducted since July</div></div>
+      <div><div class="k">₹8.4L</div><div class="l">Median CTC, 2026 batch</div></div>
+      <div><div class="k">312</div><div class="l">Students with at least one offer</div></div>
+    </div>
+  </section>
+
+  <section class="section" id="process">
+    <div class="section-head">
+      <div class="kicker">How it works</div>
+      <h2>Three roles, one queue, no back-and-forth emails.</h2>
+      <p>The cell reviews everything once. If a posting needs changes, the recruiter gets the reason in writing — and it shows up in the audit log.</p>
+    </div>
+    <div class="steps steps-3">
+      <div class="step">
+        <div class="n">For students</div>
+        <h4>Apply only to what you are eligible for</h4>
+        <p>Sign in, fill your branch, CGPA and resume link, then browse approved openings. Eligibility is checked against the posting's cut-off before you can submit — if your CGPA is 7.2 and the role asks for 7.5, the portal tells you exactly that.</p>
+      </div>
+      <div class="step">
+        <div class="n">For recruiters</div>
+        <h4>Post once, track every applicant</h4>
+        <p>Create your company profile, submit the role with package, departments and cut-off, then wait for approval. After that you can shortlist, schedule interviews and release offers — individually or in a batch.</p>
+      </div>
+      <div class="step">
+        <div class="n">For the placement cell</div>
+        <h4>Approve, reject with a reason, keep the record</h4>
+        <p>Companies and openings sit in separate queues. Approvals and rejections are written to an audit log with reviewer ID, reason and timestamp — searchable when a department asks who cleared what.</p>
+      </div>
+    </div>
+  </section>
+  <section class="section section-alt" id="openings">
+    <div class="section-head">
+      <div class="kicker">Closing soon</div>
+      <h2>Approved openings you can apply to today</h2>
+      <p>Live from the portal — only postings cleared by the cell appear here. Sign in as a student to check your eligibility against each one.</p>
+    </div>
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Opening</th><th>Company</th><th>Type</th><th class="num">Package</th><th>Departments</th><th>Deadline</th></tr>
+        </thead>
+        <tbody id="openings-body">
+          <tr><td colspan="6" class="muted">Loading approved openings…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="row" style="margin-top:24px">
+      <a class="btn btn-navy" href="login.html?role=student">See all openings</a>
+      <span class="text-sm muted">19 more roles go live after the 15 Nov review.</span>
+    </div>
+  </section>
+
+  <section class="section" id="contact">
+    <div class="grid-2" style="gap:48px;align-items:start">
+      <div class="section-head" style="margin-bottom:0">
+        <div class="kicker">Recruiters</div>
+        <h2>Hiring from the 2026 batch?</h2>
+        <p>Send us your job description and CTC band at <a href="mailto:placement@ait.edu.in">placement@ait.edu.in</a>, or create a recruiter account and post directly. Profiles are usually reviewed within two working days.</p>
+        <div class="wordmarks" style="margin-top:24px" aria-label="Recruiters who visited campus recently">
+          <span>ACME ANALYTICS</span><span>ZOHO</span><span>NEXCORE</span><span>INFY CAMPUS</span><span>URBANBOX</span><span>FINPAY</span>
+        </div>
+      </div>
+      <div class="card card-pad">
+        <h3>Placement office</h3>
+        <dl class="deflist">
+          <div><dt>Address</dt><dd>Training &amp; Placement Cell, Block C, AIT Pune 411045</dd></div>
+          <div><dt>Phone</dt><dd>+91 20 4455 8890</dd></div>
+          <div><dt>Email</dt><dd><a href="mailto:placement@ait.edu.in">placement@ait.edu.in</a></dd></div>
+          <div><dt>Office hours</dt><dd>Mon–Fri, 9:30–17:30</dd></div>
+          <div><dt>2026 batch registration closes</dt><dd>30 Nov 2026</dd></div>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <div>
+      <a class="brand" href="index.html" style="color:#fff"><span class="brand-mark">CP</span><span>CampusPlace</span></a>
+      <p style="margin-top:16px;max-width:44ch">The placement and internship portal of the Training &amp; Placement Cell, Aditya Institute of Technology, Pune. Approved postings only.</p>
+    </div>
+    <div>
+      <h4>Portal</h4>
+      <ul>
+        <li><a href="login.html?role=student">Student sign in</a></li>
+        <li><a href="login.html?role=recruiter">Recruiter sign in</a></li>
+        <li><a href="login.html?role=admin">Placement cell</a></li>
+        <li><a href="register.html">Create an account</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Policies</h4>
+      <ul>
+        <li><a href="#process">Eligibility norms</a></li>
+        <li><a href="#contact">Offer &amp; joining policy</a></li>
+        <li><a href="#contact">One-offer rule (2026)</a></li>
+        <li><a href="#contact">Grievance redressal</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-base">
+    <div>
+      <span>© 2026 Training &amp; Placement Cell, Aditya Institute of Technology</span>
+      <span>Demo build · data stored in your browser</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/seed.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  document.getElementById('nav-toggle').innerHTML = UI.icon('menu', 20);
+  AUTH.publicNav();
+  AUTH.boot().then(function () {
+    var pending = API.col(API.KEY.jobs).filter(function (j) { return j.status === 'pending'; }).length;
+    var el = document.getElementById('hero-pending');
+    if (el) el.textContent = pending + (pending === 1 ? ' opening' : ' openings');
+
+    return API.listJobs({});
+  }).then(function (rows) {
+    var approved = rows.filter(function (r) { return r.job.status === 'approved'; })
+      .sort(function (a, b) { return String(a.job.deadline).localeCompare(String(b.job.deadline)); })
+      .slice(0, 5);
+    var body = document.getElementById('openings-body');
+    if (!approved.length) {
+      body.innerHTML = '<tr><td colspan="6">' + UI.emptyState({ title: 'No approved openings yet', text: 'The cell is reviewing the first batch of postings for the 2026 season.' }) + '</td></tr>';
+      return;
+    }
+    body.innerHTML = approved.map(function (r) {
+      var d = UI.daysLeft(r.job.deadline);
+      var deadline = UI.fmtDate(r.job.deadline) + (d != null && d >= 0 && d <= 14 ? ' <span class="badge badge-pending">' + d + 'd left</span>' : '');
+      return '<tr>' +
+        '<td><span class="cell-title">' + UI.esc(r.job.title) + '</span><br><span class="cell-sub">' + UI.esc(r.job.location) + ' · ' + r.job.openings + ' opening' + (r.job.openings > 1 ? 's' : '') + '</span></td>' +
+        '<td>' + UI.esc(r.company ? r.company.name : '—') + '</td>' +
+        '<td>' + UI.badge(r.job.type) + '</td>' +
+        '<td class="num">' + UI.esc(r.packageLabel) + '</td>' +
+        '<td>' + UI.esc((r.job.departments || []).join(', ')) + '</td>' +
+        '<td class="nowrap">' + deadline + '</td>' +
+      '</tr>';
+    }).join('');
+  }).catch(function (err) { console.error(err); });
+</script>
+</body>
+</html>

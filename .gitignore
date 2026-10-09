@@ -1,0 +1,18 @@
+﻿# IDE / editor
+.freebuff/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# Logs
+*.log
+
+# Node / temp (if any)
+node_modules/
+*.tmp

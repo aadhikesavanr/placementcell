@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Applicants · Recruiter portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1 id="title">Applicants</h1>
+      <p id="subline">Pick a posting to review its pipeline.</p>
+    </div>
+    <a class="btn btn-outline" href="dashboard.html">All postings</a>
+  </div>
+
+  <div class="filters" style="margin-bottom:16px">
+    <div class="field grow">
+      <label for="job">Opening</label>
+      <select id="job"><option value="">Loading your postings…</option></select>
+    </div>
+    <div class="field">
+      <label for="status-filter">Status</label>
+      <select id="status-filter">
+        <option value="">All statuses</option>
+        <option value="applied">Applied</option>
+        <option value="shortlisted">Shortlisted</option>
+        <option value="interview">Interview</option>
+        <option value="offered">Offered</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div class="field grow">
+      <label for="q">Search candidate</label>
+      <input type="search" id="q" placeholder="Name, branch or email">
+    </div>
+  </div>
+
+  <div id="job-note" style="margin-bottom:16px"></div>
+
+  <div class="table-wrap" id="table-wrap">
+    <table class="data">
+      <thead>
+        <tr>
+          <th style="width:44px"><label class="check" style="margin:0"><input type="checkbox" id="check-all" aria-label="Select all applicants"></label></th>
+          <th>Candidate</th>
+          <th>Branch</th>
+          <th class="num">CGPA</th>
+          <th>Batch</th>
+          <th>Applied</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="8"><div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="pager"></div>
+</main>
+
+<div id="bulkbar-host"></div>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('recruiter');
+  AUTH.shell('recruiter', 'applicants');
+  document.getElementById('main').hidden = false;
+
+  var PER_PAGE = 8;
+  var state = { jobId: '', status: '', q: '', page: 1 };
+  var all = [], selected = {};
+
+  var jobSel = document.getElementById('job');
+
+  function statusCell(app) {
+    return '<select data-app="' + app.id + '" aria-label="Update status">' +
+      API.APP_STATUSES.map(function (s) {
+        return '<option value="' + s + '"' + (s === app.status ? ' selected' : '') + '>' + UI.STATUS_LABEL[s] + '</option>';
+      }).join('') + '</select>';
+  }
+
+  function rowHtml(item) {
+    var a = item.application, s = item.student || {};
+    var checked = selected[a.id] ? ' checked' : '';
+    return '<tr>' +
+      '<td><label class="check" style="margin:0"><input type="checkbox" data-select="' + a.id + '"' + checked + ' aria-label="Select ' + UI.esc(s.name || '') + '"></label></td>' +
+      '<td><span class="cell-title">' + UI.esc(s.name || 'Unknown') + '</span><br><span class="cell-sub">' + UI.esc(s.email || '') + '</span></td>' +
+      '<td>' + UI.esc(s.branch || '—') + '</td>' +
+      '<td class="num">' + (s.cgpa != null ? Number(s.cgpa).toFixed(2) : '—') + '</td>' +
+      '<td>' + UI.esc(s.gradYear || '—') + '</td>' +
+      '<td class="nowrap">' + UI.fmtDate(a.createdAt) + '<div class="text-xs muted">' + UI.relTime(a.createdAt) + '</div></td>' +
+      '<td>' + statusCell(a) + '</td>' +
+      '<td class="actions"><button class="btn btn-outline btn-sm" type="button" data-view="' + a.id + '">View</button></td>' +
+    '</tr>';
+  }
+
+  function filtered() {
+    return all.filter(function (item) {
+      var s = item.student || {};
+      if (state.status && item.application.status !== state.status) return false;
+      if (state.q) {
+        var hay = ((s.name || '') + ' ' + (s.email || '') + ' ' + (s.branch || '')).toLowerCase();
+        if (hay.indexOf(state.q.toLowerCase()) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function render() {
+    var rows = filtered();
+    var pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    if (state.page > pages) state.page = pages;
+    var slice = rows.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+    var tbody = document.getElementById('rows');
+
+    tbody.innerHTML = slice.length ? slice.map(rowHtml).join('') :
+      '<tr><td colspan="8">' + UI.emptyState({
+        icon: 'users',
+        title: state.q || state.status ? 'No applicants match this filter' : 'No applications yet',
+        text: state.q || state.status
+          ? 'Clear the search or status filter to see the full pipeline.'
+          : 'Applications appear here once students apply to this approved posting. Share the posting link with your campus contact to speed things up.'
+      }) + '</td></tr>';
+
+    document.getElementById('pager').innerHTML = UI.pagination(
+      { page: state.page, pages: pages, total: rows.length, perPage: PER_PAGE });
+    UI.bindPagination(document.getElementById('pager'), { page: state.page, pages: pages }, function (p) {
+      state.page = p; render();
+    });
+
+    UI.$$('#rows [data-select]').forEach(function (cb) {
+      cb.addEventListener('change', function () {
+        if (cb.checked) selected[cb.getAttribute('data-select')] = true;
+        else delete selected[cb.getAttribute('data-select')];
+        paintBulk();
+      });
+    });
+    UI.$$('#rows [data-view]').forEach(function (b) {
+      b.addEventListener('click', function () { showCandidate(b.getAttribute('data-view')); });
+    });
+    UI.$$('#rows select[data-app]').forEach(function (sel) {
+      sel.addEventListener('change', function () {
+        var id = sel.getAttribute('data-app'), next = sel.value;
+        var prev = all.filter(function (x) { return x.application.id === id; })[0].application.status;
+        UI.confirmDialog({
+          title: 'Move applicant to “' + UI.STATUS_LABEL[next] + '”?',
+          message: 'The candidate sees this stage change immediately on their applications page. An audit entry is recorded.',
+          confirmText: 'Update status'
+        }).then(function (ok) {
+          if (!ok) { sel.value = prev; return; }
+          API.setApplicationStatus(id, next, 'Status set from the applicants table').then(function () {
+            UI.toast('Status updated to ' + UI.STATUS_LABEL[next] + '.');
+            load(false);
+          }).catch(function (err) { sel.value = prev; UI.reportError(err); });
+        });
+      });
+    });
+    paintBulk();
+  }
+
+  function paintBulk() {
+    var ids = Object.keys(selected);
+    var host = document.getElementById('bulkbar-host');
+    if (!ids.length || !state.jobId) { host.innerHTML = ''; return; }
+    if (!document.getElementById('bulkbar')) {
+      host.innerHTML = '<div class="bulkbar" id="bulkbar">' +
+        '<span class="bulk-count"><span id="bulk-n">0</span> selected</span>' +
+        '<label class="sr-only" for="bulk-status">Bulk status</label>' +
+        '<select id="bulk-status"><option value="">Set status…</option>' +
+        API.APP_STATUSES.map(function (s) { return '<option value="' + s + '">' + UI.STATUS_LABEL[s] + '</option>'; }).join('') +
+        '</select>' +
+        '<button class="btn btn-primary btn-sm" type="button" id="bulk-apply">Apply</button>' +
+        '<button class="btn btn-ghost btn-sm" type="button" id="bulk-clear" style="color:rgba(255,255,255,.8)">Clear</button>' +
+      '</div>';
+      document.getElementById('bulk-clear').addEventListener('click', function () {
+        selected = {}; render();
+      });
+      document.getElementById('bulk-apply').addEventListener('click', bulkUpdate);
+    }
+    document.getElementById('bulk-n').textContent = ids.length;
+  }
+
+  function bulkUpdate() {
+    var status = document.getElementById('bulk-status').value;
+    if (!status) { UI.toast('Choose a status to apply to the selection.', 'warn'); return; }
+    var ids = Object.keys(selected);
+    UI.confirmDialog({
+      title: 'Batch update ' + ids.length + ' application' + (ids.length === 1 ? '' : 's') + '?',
+      message: 'All selected candidates move to “' + UI.STATUS_LABEL[status] + '”. Each change is timestamped and written to the audit log.',
+      confirmText: 'Update ' + ids.length + ' applications'
+    }).then(function (ok) {
+      if (!ok) return;
+      API.bulkSetStatus(ids, status).then(function (updated) {
+        selected = {};
+        UI.toast(updated.length + ' application' + (updated.length === 1 ? '' : 's') + ' moved to ' + UI.STATUS_LABEL[status] + '.');
+        load(false);
+      }).catch(function (err) { UI.reportError(err); });
+    });
+  }
+
+  function showCandidate(appId) {
+    var item = all.filter(function (x) { return x.application.id === appId; })[0];
+    if (!item) return;
+    var s = item.student || {}, a = item.application;
+    var tl = (a.timeline || []).slice().reverse();
+    var m = UI.openModal({
+      title: s.name || 'Candidate',
+      wide: true,
+      body:
+        '<div class="row" style="gap:8px;margin-bottom:16px">' + UI.badge(a.status) +
+        '<span class="text-sm muted">Applied ' + UI.fmtDate(a.createdAt) + '</span></div>' +
+        '<dl class=\"deflist\">' +
+          '<div><dt>Branch</dt><dd>' + UI.esc(s.branch || '—') + '</dd></div>' +
+          '<div><dt>CGPA</dt><dd>' + (s.cgpa != null ? Number(s.cgpa).toFixed(2) : '—') + '</dd></div>' +
+          '<div><dt>Graduation year</dt><dd>' + UI.esc(s.gradYear || '—') + '</dd></div>' +
+          '<div><dt>Email</dt><dd>' + UI.esc(s.email || '—') + '</dd></div>' +
+          '<div><dt>Contact</dt><dd>' + UI.esc(s.phone || '—') + '</dd></div>' +
+          '<div><dt>Skills</dt><dd>' + UI.esc((s.skills || []).join(', ') || '—') + '</dd></div>' +
+        '</dl>' +
+        '<p style="margin-top:16px">' +
+          (s.resumeLink
+            ? '<a class="btn btn-outline btn-sm" href="' + UI.esc(s.resumeLink) + '" target="_blank" rel="noopener">' + UI.icon('external', 15) + ' Open resume</a>'
+            : '<span class="panel-note panel-note-warn">' + UI.icon('alert', 15) + ' No resume link on file.</span>') +
+        '</p>' +
+        '<h4 style="margin-top:20px">Stage history</h4>' +
+        '<ol class="text-sm" style="padding-left:18px;margin:0">' + tl.map(function (t) {
+          return '<li style="margin-bottom:6px"><strong>' + UI.STATUS_LABEL[t.status] + '</strong> — ' + UI.fmtDateTime(t.at) +
+            (t.note ? ' <span class="muted">· ' + UI.esc(t.note) + '</span>' : '') + '</li>';
+        }).join('') + '</ol>'
+    });
+  }
+
+  function load(resetPage) {
+    if (resetPage) state.page = 1;
+    if (!state.jobId) return;
+    document.getElementById('rows').innerHTML =
+      '<tr><td colspan="8">' + UI.skeletonRows(4, 4) + '</td></tr>';
+    API.jobApplicants(state.jobId).then(function (data) {
+      all = data;
+      render();
+    }).catch(function (err) { UI.reportError(err); });
+  }
+
+  function paintJobNote(job) {
+    var note = document.getElementById('job-note');
+    if (!job) { note.innerHTML = ''; return; }
+    if (job.status !== 'approved') {
+      note.innerHTML = '<div class="panel-note panel-note-warn">' + UI.icon('clock', 18) +
+        '<span>This posting is <strong>' + job.status + '</strong> — students cannot apply while it is outside the approved list.' +
+        (job.rejectionReason ? ' Reason: ' + UI.esc(job.rejectionReason) : '') + '</span></div>';
+    } else {
+      note.innerHTML = '<div class="panel-note panel-note-ok">' + UI.icon('check', 18) +
+        '<span><strong>' + UI.esc(job.title) + '</strong> is live. Candidates see your company name, package and cut-off.</span></div>';
+    }
+  }
+
+  API.myJobs().then(function (jobs) {
+    if (!jobs.length) {
+      jobSel.innerHTML = '<option value="">No postings yet</option>';
+      document.getElementById('rows').innerHTML = '<tr><td colspan="8">' + UI.emptyState({
+        icon: 'briefcase', title: 'Post an opening first',
+        text: 'Applicants are listed per posting. Create a role, get it approved, and its pipeline appears here.',
+        action: 'Post an opening'
+      }) + '</td></tr>';
+      var act = document.querySelector('[data-empty-action]');
+      if (act) act.addEventListener('click', function () { location.href = 'post-job.html'; });
+      return;
+    }
+    jobSel.innerHTML = jobs.map(function (r) {
+      return '<option value="' + r.job.id + '">' + UI.esc(r.job.title) + ' · ' + r.applicantCount + ' applicant' + (r.applicantCount === 1 ? '' : 's') + '</option>';
+    }).join('');
+
+    var wanted = new URLSearchParams(location.search).get('jobId');
+    var chosen = jobs.filter(function (r) { return r.job.id === wanted; })[0] || jobs[0];
+    jobSel.value = chosen.job.id;
+    state.jobId = chosen.job.id;
+    document.getElementById('title').textContent = 'Applicants — ' + chosen.job.title;
+    document.getElementById('subline').textContent =
+      chosen.applicantCount + ' application' + (chosen.applicantCount === 1 ? '' : 's') + ' · ' +
+      chosen.shortlisted + ' shortlisted · ' + chosen.offered + ' offered · package ' + chosen.packageLabel;
+    paintJobNote(chosen.job);
+    load(true);
+  }).catch(function (err) { UI.reportError(err); });
+
+  jobSel.addEventListener('change', function () {
+    state.jobId = jobSel.value;
+    selected = {};
+    var opt = jobSel.options[jobSel.selectedIndex];
+    document.getElementById('title').textContent = 'Applicants — ' + opt.textContent.split(' · ')[0];
+    API.myJobs().then(function (jobs) {
+      var chosen = jobs.filter(function (r) { return r.job.id === state.jobId; })[0];
+      if (chosen) {
+        document.getElementById('subline').textContent =
+          chosen.applicantCount + ' application' + (chosen.applicantCount === 1 ? '' : 's') + ' · package ' + chosen.packageLabel;
+        paintJobNote(chosen.job);
+      }
+      load(true);
+    });
+  });
+
+  document.getElementById('status-filter').addEventListener('change', function (e) {
+    state.status = e.target.value; state.page = 1; render();
+  });
+  var qTimer;
+  document.getElementById('q').addEventListener('input', function (e) {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function () { state.q = e.target.value.trim(); state.page = 1; render(); }, 250);
+  });
+  document.getElementById('check-all').addEventListener('change', function (e) {
+    filtered().slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE).forEach(function (item) {
+      if (e.target.checked) selected[item.application.id] = true;
+      else delete selected[item.application.id];
+    });
+    render();
+  });
+</script>
+</body>
+</html>

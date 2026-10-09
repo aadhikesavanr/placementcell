@@ -1,0 +1,88 @@
+/* ============================================================
+   tokens.css — design tokens (Campus Placement & Internship Portal)
+   Palette: deep navy + green, institutional education look
+   ============================================================ */
+:root {
+  /* Core palette */
+  --navy: #0b1f3a;
+  --navy-800: #122c50;
+  --navy-700: #1a3a63;
+  --navy-600: #26497a;
+  --navy-050: #f2f6fb;
+
+  --green: #1fa971;
+  --green-600: #178a5c;
+  --green-700: #12704a;
+  --mint: #e8f6ef;
+  --mint-100: #f4fbf8;
+
+  /* Neutrals */
+  --ink: #101b2d;
+  --text: #24314a;
+  --text-muted: #5d6b83;
+  --text-faint: #8695ab;
+  --line: #e3e8ef;
+  --line-strong: #cfd7e3;
+  --surface: #ffffff;
+  --surface-2: #f7f9fc;
+  --surface-3: #eef2f7;
+  --page: #f4f6fa;
+
+  /* Status colours */
+  --amber: #b8760b;
+  --amber-bg: #fdf3e0;
+  --amber-line: #f2dcae;
+  --ok: #15803d;
+  --ok-bg: #e7f6ec;
+  --ok-line: #bfe6cc;
+  --bad: #c02626;
+  --bad-bg: #fdecec;
+  --bad-line: #f4c6c6;
+  --info: #1d5fbf;
+  --info-bg: #e9f1fd;
+  --info-line: #c6dbf7;
+  --grey-bg: #eef1f6;
+  --grey-line: #dbe1ea;
+
+  /* Type */
+  --font-display: "Plus Jakarta Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-text: "Inter", system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --lh-tight: 1.15;
+  --lh-body: 1.6;
+
+  /* Spacing — 8px grid */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  /* Shape */
+  --r-sm: 6px;
+  --r-md: 12px;
+  --r-pill: 999px;
+
+  /* Elevation — very soft */
+  --shadow-xs: 0 1px 2px rgba(11, 31, 58, 0.06);
+  --shadow-sm: 0 1px 3px rgba(11, 31, 58, 0.08), 0 1px 2px rgba(11, 31, 58, 0.04);
+  --shadow-md: 0 6px 18px rgba(11, 31, 58, 0.10);
+  --shadow-lg: 0 18px 44px rgba(11, 31, 58, 0.18);
+
+  /* Motion — 150–200ms only */
+  --t-fast: 150ms ease;
+  --t-base: 200ms ease;
+
+  /* Layout */
+  --sidebar-w: 248px;
+  --topbar-h: 64px;
+  --content-max: 1200px;
+}

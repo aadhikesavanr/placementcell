@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Opening approvals · Placement cell · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Opening approvals</h1>
+      <p>Only postings marked <strong>Approved</strong> — from an approved company — are visible to students. Rejections must carry a reason.</p>
+    </div>
+    <a class="btn btn-outline" href="companies.html">Company queue</a>
+  </div>
+
+  <div class="filters" style="margin-bottom:16px">
+    <div class="field grow">
+      <label for="q">Search</label>
+      <input type="search" id="q" placeholder="Role or company">
+    </div>
+    <div class="field">
+      <label for="type">Type</label>
+      <select id="type"><option value="">All types</option><option value="Job">Full-time</option><option value="Internship">Internship</option></select>
+    </div>
+    <div class="field">
+      <label for="sort">Sort</label>
+      <select id="sort"><option value="new">Newest first</option><option value="old">Oldest first</option><option value="deadline">Deadline soonest</option></select>
+    </div>
+  </div>
+
+  <div class="tabs" role="tablist" id="tabs" style="margin-bottom:16px">
+    <button class="tab" role="tab" aria-selected="true" data-tab="pending">Pending <span class="count" id="c-pending">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="approved">Approved <span class="count" id="c-approved">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="rejected">Rejected <span class="count" id="c-rejected">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="">All <span class="count" id="c-all">0</span></button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="data">
+      <thead>
+        <tr><th>Opening</th><th>Company</th><th>Type</th><th class="num">Package</th><th>Departments</th><th class="num">Min CGPA</th><th class="num">Applicants</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="9"><div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="pager"></div>
+</main>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('admin');
+  AUTH.shell('admin', 'jobs');
+  document.getElementById('main').hidden = false;
+
+  var PER_PAGE = 8;
+  var state = { tab: 'pending', q: '', type: '', sort: 'new', page: 1 };
+  var cache = [];
+
+  function decide(id, decision, title) {
+    UI.confirmDialog({
+      title: decision === 'approved' ? 'Approve “' + title + '”?' : 'Reject “' + title + '”?',
+      message: decision === 'approved'
+        ? 'Students matching the department and CGPA filters can apply immediately.'
+        : 'The recruiter sees your reason on their dashboard and can resubmit. The entry is written to the audit log.',
+      reasonLabel: decision === 'approved' ? null : 'Rejection reason',
+      confirmText: decision === 'approved' ? 'Approve opening' : 'Reject opening',
+      danger: decision !== 'approved'
+    }).then(function (reason) {
+      if (!reason) return;
+      var fn = decision === 'approved' ? API.approveJob : API.rejectJob;
+      fn(id, reason === true ? '' : reason).then(function () {
+        UI.toast(title + ' ' + decision + '. Audit entry written.');
+        load();
+      }).catch(function (err) { UI.reportError(err); });
+    });
+  }
+
+  function row(r) {
+    var j = r.job;
+    var coBlocked = !r.company || r.company.status !== 'approved';
+    return '<tr>' +
+      '<td><span class="cell-title">' + UI.esc(j.title) + '</span><br>' +
+        '<span class="cell-sub">' + UI.esc(j.location) + ' · ' + j.openings + ' opening' + (j.openings === 1 ? '' : 's') +
+        ' · closes ' + UI.fmtDate(j.deadline) + '</span></td>' +
+      '<td>' + UI.esc(r.company ? r.company.name : '—') +
+        (coBlocked ? '<div class="text-xs" style="color:var(--amber)">company not approved</div>' : '') + '</td>' +
+      '<td>' + UI.badge(j.type) + '</td>' +
+      '<td class="num">' + UI.esc(r.packageLabel) + '</td>' +
+      '<td class="text-sm">' + UI.esc((j.departments || []).join(', ')) + '</td>' +
+      '<td class="num">' + Number(j.minCgpa).toFixed(1) + '</td>' +
+      '<td class="num">' + r.applicantCount + '</td>' +
+      '<td>' + UI.badge(j.status) +
+        (j.rejectionReason ? '<div class="text-xs" style="color:var(--bad);max-width:260px;margin-top:4px">' + UI.esc(j.rejectionReason) + '</div>' : '') +
+      '</td>' +
+      '<td class="actions">' +
+        '<button class="btn btn-outline btn-sm" type="button" data-view="' + j.id + '">View</button>' +
+        (j.status !== 'approved'
+          ? '<button class="btn btn-primary btn-sm" type="button" data-ok="' + j.id + '"' + (coBlocked ? ' disabled title="Approve the company first"' : '') + '>Approve</button> ' +
+            '<button class="btn btn-outline btn-sm" type="button" data-no="' + j.id + '">Reject</button>'
+          : '') +
+      '</td></tr>';
+  }
+
+  function render() {
+    var rows = cache.filter(function (r) {
+      if (state.type && r.job.type !== state.type) return false;
+      if (state.q) {
+        var hay = (r.job.title + ' ' + (r.company ? r.company.name : '')).toLowerCase();
+        if (hay.indexOf(state.q.toLowerCase()) === -1) return false;
+      }
+      return true;
+    });
+    if (state.sort === 'old') rows.sort(function (a, b) { return String(a.job.createdAt).localeCompare(String(b.job.createdAt)); });
+    if (state.sort === 'deadline') rows.sort(function (a, b) { return String(a.job.deadline).localeCompare(String(b.job.deadline)); });
+
+    var pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+    if (state.page > pages) state.page = pages;
+    var slice = rows.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+
+    document.getElementById('rows').innerHTML = slice.length ? slice.map(row).join('') :
+      '<tr><td colspan="9">' + UI.emptyState({
+        icon: 'briefcase',
+        title: state.tab === 'pending' ? 'No postings waiting for review' : 'Nothing matches these filters',
+        text: state.tab === 'pending'
+          ? 'Recruiter submissions land here. Approving a posting publishes it to every eligible student.'
+          : 'Switch tabs or clear the search to see other postings.'
+      }) + '</td></tr>';
+
+    document.getElementById('pager').innerHTML = UI.pagination(
+      { page: state.page, pages: pages, total: rows.length, perPage: PER_PAGE });
+    UI.bindPagination(document.getElementById('pager'), { page: state.page, pages: pages }, function (p) {
+      state.page = p; render();
+    });
+
+    function find(id) { return cache.filter(function (x) { return x.job.id === id; })[0]; }
+    UI.$$('[data-ok]').forEach(function (b) {
+      b.addEventListener('click', function () { var r = find(b.getAttribute('data-ok')); decide(r.job.id, 'approved', r.job.title); });
+    });
+    UI.$$('[data-no]').forEach(function (b) {
+      b.addEventListener('click', function () { var r = find(b.getAttribute('data-no')); decide(r.job.id, 'rejected', r.job.title); });
+    });
+    UI.$$('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var r = find(b.getAttribute('data-view')), j = r.job;
+        UI.openModal({
+          title: j.title, wide: true,
+          body: '<div class="row" style="gap:8px;margin-bottom:16px">' + UI.badge(j.status) + UI.badge(j.type) +
+            '<span class="text-sm muted">' + UI.esc(r.company ? r.company.name : '') + '</span></div>' +
+            '<dl class="deflist">' +
+              '<div><dt>Package / stipend</dt><dd>' + UI.esc(r.packageLabel) + '</dd></div>' +
+              '<div><dt>Location</dt><dd>' + UI.esc(j.location) + '</dd></div>' +
+              '<div><dt>Deadline</dt><dd>' + UI.fmtDate(j.deadline) + '</dd></div>' +
+              '<div><dt>Minimum CGPA</dt><dd>' + Number(j.minCgpa).toFixed(1) + '</dd></div>' +
+              '<div><dt>Departments</dt><dd>' + UI.esc((j.departments || []).join(', ')) + '</dd></div>' +
+              '<div><dt>Openings</dt><dd>' + j.openings + '</dd></div>' +
+              '<div><dt>Applicants</dt><dd>' + r.applicantCount + '</dd></div>' +
+              '<div><dt>Submitted</dt><dd>' + UI.fmtDate(j.createdAt) + '</dd></div>' +
+            '</dl>' +
+            '<h4 style="margin-top:20px">Description</h4><p class="text-sm muted">' + UI.esc(j.description) + '</p>' +
+            (j.responsibilities && j.responsibilities.length
+              ? '<h4 style="margin-top:16px">Responsibilities</h4><ul class="text-sm muted">' +
+                j.responsibilities.map(function (x) { return '<li>' + UI.esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+            (j.rejectionReason ? '<p class="panel-note panel-note-bad" style="margin-top:16px">' + UI.icon('alert', 16) + '<span><strong>Rejection reason on file:</strong> ' + UI.esc(j.rejectionReason) + '</span></p>' : '')
+        });
+      });
+    });
+  }
+
+  function load() {
+    document.getElementById('rows').innerHTML = '<tr><td colspan="9">' + UI.skeletonRows(5, 4) + '</td></tr>';
+    API.listJobsAdmin({ status: state.tab || undefined }).then(function (rows) {
+      cache = rows;
+      return API.listJobsAdmin({}).then(function (all) {
+        ['pending', 'approved', 'rejected', 'all'].forEach(function (k) {
+          var n = k === 'all' ? all.length : all.filter(function (r) { return r.job.status === k; }).length;
+          document.getElementById('c-' + k).textContent = n;
+        });
+      });
+    }).then(function () { render(); })
+      .catch(function (err) { UI.reportError(err); });
+  }
+
+  UI.$$('#tabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      state.tab = t.getAttribute('data-tab');
+      state.page = 1;
+      UI.$$('#tabs .tab').forEach(function (x) { x.setAttribute('aria-selected', x === t ? 'true' : 'false'); });
+      load();
+    });
+  });
+  var qTimer;
+  document.getElementById('q').addEventListener('input', function (e) {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(function () { state.q = e.target.value.trim(); state.page = 1; render(); }, 250);
+  });
+  document.getElementById('type').addEventListener('change', function (e) { state.type = e.target.value; state.page = 1; render(); });
+  document.getElementById('sort').addEventListener('change', function (e) { state.sort = e.target.value; render(); });
+
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Audit log · Placement cell · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>Audit log</h1>
+      <p>Every approval, rejection and status change — with target, decision, reviewer ID, reason and timestamp. Entries are written by the API, not by the pages.</p>
+    </div>
+    <span class="text-sm muted" id="total">—</span>
+  </div>
+
+  <form class="filters" id="filters" style="margin-bottom:16px">
+    <div class="field grow">
+      <label for="q">Search</label>
+      <input type="search" id="q" name="q" placeholder="Target, reviewer or reason">
+    </div>
+    <div class="field">
+      <label for="action">Action</label>
+      <select id="action" name="action">
+        <option value="">All actions</option>
+        <option value="company_approved">Company approved</option>
+        <option value="company_rejected">Company rejected</option>
+        <option value="job_approved">Opening approved</option>
+        <option value="job_rejected">Opening rejected</option>
+        <option value="application_status">Application status change</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="from">From</label>
+      <input type="date" id="from" name="from">
+    </div>
+    <div class="field">
+      <label for="to">To</label>
+      <input type="date" id="to" name="to">
+    </div>
+    <button class="btn btn-ghost" type="button" id="clear">Clear</button>
+  </form>
+
+  <div class="table-wrap table-scroll-y">
+    <table class="data">
+      <thead>
+        <tr><th>Timestamp</th><th>Action</th><th>Target</th><th>Decision</th><th>Reviewer</th><th>Reason</th></tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="6"><div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="pager"></div>
+</main>
+
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('admin');
+  AUTH.shell('admin', 'audit-log');
+  document.getElementById('main').hidden = false;
+
+  var ACTION_LABEL = {
+    company_approved: 'Company approved',
+    company_rejected: 'Company rejected',
+    job_approved: 'Opening approved',
+    job_rejected: 'Opening rejected',
+    application_status: 'Application status'
+  };
+
+  var state = { q: '', action: '', from: '', to: '', page: 1 };
+  var current = { page: 1, pages: 1, total: 0, perPage: 10 };
+
+  function render(data) {
+    current = data;
+    document.getElementById('total').textContent = data.total + ' entr' + (data.total === 1 ? 'y' : 'ies');
+
+    document.getElementById('rows').innerHTML = data.items.length ? data.items.map(function (e) {
+      return '<tr>' +
+        '<td class="nowrap"><span class="cell-title">' + UI.fmtDateTime(e.at) + '</span><br>' +
+          '<span class="cell-sub">' + UI.relTime(e.at) + '</span></td>' +
+        '<td>' + UI.esc(ACTION_LABEL[e.action] || e.action) + '</td>' +
+        '<td><span class="cell-title">' + UI.esc(e.targetLabel) + '</span><br>' +
+          '<span class="cell-sub">' + UI.esc(e.targetType) + ' · ' + UI.esc(e.targetId) + '</span></td>' +
+        '<td>' + UI.badge(e.decision) + '</td>' +
+        '<td>' + UI.esc(e.reviewerName) + '<div class="text-xs muted">' + UI.esc(e.reviewerRole) + ' · ' + UI.esc(e.reviewerId) + '</div></td>' +
+        '<td style="max-width:320px">' + UI.esc(e.reason || '—') + '</td>' +
+      '</tr>';
+    }).join('') :
+      '<tr><td colspan="6">' + UI.emptyState({
+        icon: 'history',
+        title: 'No entries match these filters',
+        text: 'Clear the search, action or date range. The log keeps every decision made since the season opened.'
+      }) + '</td></tr>';
+
+    document.getElementById('pager').innerHTML = UI.pagination(
+      { page: data.page, pages: data.pages, total: data.total, perPage: data.perPage });
+    UI.bindPagination(document.getElementById('pager'), { page: data.page, pages: data.pages }, function (p) {
+      state.page = p; load();
+    });
+  }
+
+  function load() {
+    document.getElementById('rows').innerHTML = '<tr><td colspan="6">' + UI.skeletonRows(6, 3) + '</td></tr>';
+    API.auditLog(state).then(render).catch(function (err) { UI.reportError(err); });
+  }
+
+  var timer;
+  document.getElementById('filters').addEventListener('input', function (e) {
+    if (!e.target.name) return;
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      state[e.target.name] = e.target.value.trim();
+      state.page = 1;
+      load();
+    }, e.target.name === 'q' ? 300 : 0);
+  });
+  document.getElementById('filters').addEventListener('submit', function (e) { e.preventDefault(); });
+  document.getElementById('clear').addEventListener('click', function () {
+    document.getElementById('filters').reset();
+    state = { q: '', action: '', from: '', to: '', page: 1 };
+    load();
+  });
+
+  load();
+</script>
+</body>
+</html>

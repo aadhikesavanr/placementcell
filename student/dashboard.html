@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview · Student portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1 id="greeting">Welcome back</h1>
+      <p id="subline">Loading your season summary…</p>
+    </div>
+    <div class="btn-group">
+      <a class="btn btn-outline" href="profile.html">Complete profile</a>
+      <a class="btn btn-primary" href="jobs.html">Browse openings</a>
+    </div>
+  </div>
+
+  <div class="grid-4" id="stats" style="margin-bottom:24px">
+    <div class="stat stat-accent-navy"><div class="stat-label">Applications sent</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-amber"><div class="stat-label">In process</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-green"><div class="stat-label">Offers</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+    <div class="stat stat-accent-info"><div class="stat-label">Openings open</div><div class="stat-value">—</div><div class="stat-sub"></div></div>
+  </div>
+
+  <div class="grid-2" style="gap:24px;align-items:start">
+    <section class="card" aria-labelledby="h-recommend">
+      <div class="card-head">
+        <h3 id="h-recommend">Openings you qualify for</h3>
+        <a class="text-sm strong" href="jobs.html">View all</a>
+      </div>
+      <div id="recommend" class="card-body">
+        <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+        <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+      </div>
+    </section>
+
+    <div class="stack-4">
+      <section class="card" aria-labelledby="h-profile">
+        <div class="card-head"><h3 id="h-profile">Profile strength</h3></div>
+        <div class="card-body">
+          <div class="row-between"><strong id="pct" style="font-family:var(--font-display);font-size:28px">—</strong><span class="text-sm muted" id="pct-label">Calculating…</span></div>
+          <div style="height:8px;background:var(--surface-3);border-radius:999px;margin:12px 0 16px;overflow:hidden">
+            <div id="bar" style="height:100%;width:0;background:var(--green);transition:width 200ms ease"></div>
+          </div>
+          <ul class="text-sm" id="p-checklist" style="list-style:none;padding:0;margin:0"></ul>
+          <a class="btn btn-outline btn-sm btn-block" href="profile.html" style="margin-top:16px">Edit profile</a>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="h-deadline">
+        <div class="card-head"><h3 id="h-deadline">Closing in the next 21 days</h3></div>
+        <div id="deadlines" class="card-body"><p class="text-sm muted">Checking deadlines…</p></div>
+      </section>
+
+      <section class="card" aria-labelledby="h-recent">
+        <div class="card-head">
+          <h3 id="h-recent">Recent activity</h3>
+          <a class="text-sm strong" href="applications.html">All applications</a>
+        </div>
+        <div id="recent" class="card-body"><p class="text-sm muted">Loading…</p></div>
+      </section>
+    </div>
+  </div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  var user = AUTH.guard('student');
+  AUTH.shell('student', 'dashboard');
+  document.getElementById('main').hidden = false;
+  document.getElementById('greeting').textContent = 'Welcome back, ' + user.name.split(' ')[0];
+
+  function jobCard(r) {
+    var e = r.eligibility;
+    return '<a class="job-card" href="job-detail.html?id=' + r.job.id + '">' +
+      '<div class="job-card-top">' +
+        '<div><h3>' + UI.esc(r.job.title) + '</h3>' +
+        '<div class="job-meta"><span>' + UI.esc(r.company ? r.company.name : '—') + '</span>' +
+        '<span>' + UI.icon('pin', 14) + UI.esc(r.job.location) + '</span>' +
+        '<span>' + UI.icon('calendar', 14) + 'Closes ' + UI.fmtDate(r.job.deadline) + '</span></div></div>' +
+        '<div class="job-side">' + UI.esc(r.packageLabel) + '</div>' +
+      '</div>' +
+      (e ? '<span class="elig-chip ' + (e.eligible ? 'elig-yes' : 'elig-no') + '">' +
+        UI.icon(e.eligible ? 'check' : 'x', 13) + (e.eligible ? 'You are eligible' : 'Not eligible') + '</span>' : '') +
+      '</a>';
+  }
+
+  API.studentStats().then(function (s) {
+    var hour = new Date().getHours();
+    var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('greeting').textContent = greet + ', ' + user.name.split(' ')[0];
+    document.getElementById('subline').textContent =
+      user.branch + ' · CGPA ' + (user.cgpa != null ? Number(user.cgpa).toFixed(2) : '—') +
+      ' · Batch of ' + user.gradYear + ' · ' + s.applications + ' application' + (s.applications === 1 ? '' : 's') + ' on record';
+
+    var cards = document.querySelectorAll('#stats .stat');
+    [s.applications, s.shortlisted, s.offers, s.openJobs].forEach(function (v, i) {
+      cards[i].querySelector('.stat-value').textContent = v;
+    });
+    UI.statSub(cards[3], s.deadlineSoon + ' closing within 3 weeks');
+
+    // profile checklist
+    var checks = [
+      { label: 'Branch and batch set', ok: !!user.branch && !!user.gradYear },
+      { label: 'CGPA entered', ok: user.cgpa != null },
+      { label: 'Resume link added', ok: !!user.resumeLink },
+      { label: 'Contact number', ok: !!user.phone }
+    ];
+    var pct = API.profileCompleteness(user);
+    document.getElementById('pct').textContent = pct + '%';
+    document.getElementById('pct-label').textContent = pct === 100 ? 'Ready to apply' : 'Recruiters see incomplete profiles less often';
+    document.getElementById('bar').style.width = pct + '%';
+    document.getElementById('p-checklist').innerHTML = checks.map(function (c) {
+      return '<li class="row" style="gap:8px;margin-bottom:8px;color:' + (c.ok ? 'var(--ok)' : 'var(--text-muted)') + '">' +
+        UI.icon(c.ok ? 'check' : 'x', 15) + '<span>' + c.label + '</span></li>';
+    }).join('');
+
+    return Promise.all([API.listJobs({}), s, API.myApplications()]);
+  }).then(function (pair) {
+    var rows = pair[0], s = pair[1];
+    var eligible = rows.filter(function (r) { return r.eligibility && r.eligibility.eligible; });
+    var rec = document.getElementById('recommend');
+    rec.innerHTML = eligible.length
+      ? eligible.slice(0, 3).map(jobCard).join('')
+      : UI.emptyState({ icon: 'briefcase', title: 'No openings match your profile yet',
+          text: 'Add your resume link and keep your CGPA updated — approved roles for your branch will show up here.',
+          action: 'Open my profile' });
+    var act = rec.querySelector('[data-empty-action]');
+    if (act) act.addEventListener('click', function () { location.href = 'profile.html'; });
+
+    var soon = rows.filter(function (r) {
+      var d = UI.daysLeft(r.job.deadline);
+      return d != null && d >= 0 && d <= 21;
+    }).sort(function (a, b) { return UI.daysLeft(a.job.deadline) - UI.daysLeft(b.job.deadline); });
+    document.getElementById('deadlines').innerHTML = soon.length ? soon.map(function (r) {
+      var d = UI.daysLeft(r.job.deadline);
+      return '<a class="row-between" href="job-detail.html?id=' + r.job.id + '" style="padding:8px 0;border-bottom:1px dashed var(--line);color:inherit">' +
+        '<span><strong style="font-size:14px">' + UI.esc(r.job.title) + '</strong><br><span class="text-xs muted">' + UI.esc(r.company ? r.company.name : '') + '</span></span>' +
+        '<span class="badge badge-pending">' + d + 'd left</span></a>';
+    }).join('') : '<p class="text-sm muted">Nothing closes in the next three weeks. The 15 Nov batch adds 19 roles.</p>';
+
+    var recent = document.getElementById('recent');
+    var myApps = pair[2].slice(0, 4);
+    recent.innerHTML = myApps.length ? myApps.map(function (row) {
+      return '<a class="row-between" href="applications.html" style="padding:8px 0;border-bottom:1px dashed var(--line);color:inherit">' +
+        '<span class="text-sm">' + UI.esc(row.job.title) + '<br><span class="text-xs muted">' + UI.esc(row.company) + '</span></span>' + UI.badge(row.application.status) + '</a>';
+    }).join('') : '<p class="text-sm muted">You have not applied yet. Approved openings for ' + UI.esc(user.branch) + ' are listed under Browse openings.</p>';
+  }).catch(function (err) { UI.reportError(err); });
+</script>
+</body>
+</html>

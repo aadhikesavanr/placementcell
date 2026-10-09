@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My applications · Student portal · CampusPlace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/tokens.css">
+<link rel="stylesheet" href="../css/base.css">
+<link rel="stylesheet" href="../css/components.css">
+<link rel="stylesheet" href="../css/layout.css">
+</head>
+<body>
+<div id="shell-root"></div>
+
+<main class="page" id="main" hidden>
+  <div class="page-head">
+    <div>
+      <h1>My applications</h1>
+      <p>Every stage change is timestamped by the recruiter's action — nothing here is estimated.</p>
+    </div>
+    <a class="btn btn-primary" href="jobs.html">Browse openings</a>
+  </div>
+
+  <div class="tabs" role="tablist" id="tabs" style="margin-bottom:20px">
+    <button class="tab" role="tab" aria-selected="true" data-filter="all">All <span class="count" id="c-all">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-filter="process">In process <span class="count" id="c-process">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-filter="offered">Offered <span class="count" id="c-offered">0</span></button>
+    <button class="tab" role="tab" aria-selected="false" data-filter="rejected">Rejected <span class="count" id="c-rejected">0</span></button>
+  </div>
+
+  <div id="list" aria-live="polite">
+    <div class="card card-pad"><div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div>
+    <div class="skel-row"><div class="skel skel-line" style="flex:2"></div><div class="skel skel-line"></div></div></div>
+  </div>
+</main>
+<script src="../js/ui.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/seed.js"></script>
+<script src="../js/auth.js"></script>
+<script>
+  AUTH.guard('student');
+  AUTH.shell('student', 'applications');
+  document.getElementById('main').hidden = false;
+
+  var LABELS = { applied: 'Applied', shortlisted: 'Shortlisted', interview: 'Interview', offered: 'Offered', rejected: 'Rejected' };
+  var ORDER = ['applied', 'shortlisted', 'interview', 'offered'];
+  var rows = [], filter = 'all';
+
+  function timesOf(app) {
+    var map = {};
+    (app.timeline || []).forEach(function (t) { if (!map[t.status]) map[t.status] = t.at; });
+    return map;
+  }
+
+  function pipeline(app) {
+    var times = timesOf(app);
+    var isRej = app.status === 'rejected';
+    var done = ORDER.filter(function (k) { return times[k]; });
+    var steps = done.map(function (k) { return [k, LABELS[k]]; });
+    if (isRej) steps.push(['rejected', 'Rejected']);
+    else steps = ORDER.map(function (k) { return [k, LABELS[k]]; });
+
+    var lastKey = steps.length ? steps[steps.length - 1][0] : null;
+    return '<div class="pipeline">' + steps.map(function (s) {
+      var key = s[0];
+      var has = !!times[key];
+      var cls = '';
+      if (key === 'rejected') cls = 'is-rejected';
+      else if (has && key === lastKey && app.status !== 'offered') cls = 'is-current';
+      else if (has) cls = 'is-done';
+      else if (ORDER.indexOf(key) <= ORDER.indexOf(app.status)) cls = 'is-current';
+      return '<div class="pipe-step ' + cls + '">' +
+        '<span class="pipe-label">' + s[1] + '</span>' +
+        '<span class="pipe-time">' + (times[key] ? UI.fmtDateTime(times[key]) : '—') + '</span>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  function card(row) {
+    var a = row.application;
+    var last = (a.timeline || [])[a.timeline.length - 1];
+    var note = last && last.note ? last.note : '';
+    return '<article class="card card-pad" style="margin-bottom:16px">' +
+      '<div class="row-between" style="flex-wrap:wrap;gap:12px;align-items:flex-start">' +
+        '<div>' +
+          '<div class="row" style="gap:8px;margin-bottom:4px">' + UI.badge(a.status) + UI.badge(row.job.type) + '</div>' +
+          '<h3 style="font-size:18px;margin-bottom:2px">' + UI.esc(row.job.title) + '</h3>' +
+          '<div class="job-meta"><span>' + UI.esc(row.company) + '</span><span>' + UI.esc(row.packageLabel) + '</span>' +
+          '<span>' + UI.icon('calendar', 14) + 'Applied ' + UI.fmtDate(a.createdAt) + '</span></div>' +
+        '</div>' +
+        '<div style="text-align:right"><div class="text-xs muted">Application ID</div>' +
+        '<div class="mono">' + UI.esc(a.id) + '</div></div>' +
+      '</div>' +
+      '<div style="overflow-x:auto;margin-top:20px">' + pipeline(a) + '</div>' +
+      (note ? '<p class="panel-note ' + (a.status === 'rejected' ? 'panel-note-bad' : 'panel-note-info') +
+        '" style="margin-top:16px">' + UI.icon(a.status === 'rejected' ? 'alert' : 'info', 16) +
+        '<span><strong>Latest update:</strong> ' + UI.esc(note) + '</span></p>' : '') +
+    '</article>';
+  }
+
+  function render() {
+    var counts = { all: rows.length, process: 0, offered: 0, rejected: 0 };
+    rows.forEach(function (r) {
+      var s = r.application.status;
+      if (['applied', 'shortlisted', 'interview'].indexOf(s) !== -1) counts.process++;
+      if (s === 'offered') counts.offered++;
+      if (s === 'rejected') counts.rejected++;
+    });
+    Object.keys(counts).forEach(function (k) {
+      var el = document.getElementById('c-' + k);
+      if (el) el.textContent = counts[k];
+    });
+
+    var shown = rows.filter(function (r) {
+      var s = r.application.status;
+      if (filter === 'all') return true;
+      if (filter === 'process') return ['applied', 'shortlisted', 'interview'].indexOf(s) !== -1;
+      if (filter === 'offered') return s === 'offered';
+      if (filter === 'rejected') return s === 'rejected';
+      return true;
+    });
+
+    document.getElementById('list').innerHTML = shown.length ? shown.map(card).join('') : UI.emptyState({
+      icon: 'inbox',
+      title: filter === 'all' ? 'You have not applied to anything yet' : 'Nothing in this tab',
+      text: filter === 'all'
+        ? 'Openings approved by the cell — filtered to your branch and CGPA — are one click away.'
+        : 'Applications move into this tab as soon as a recruiter updates the status.',
+      action: filter === 'all' ? 'Browse openings' : 'Show all applications'
+    });
+    var act = document.querySelector('[data-empty-action]');
+    if (act) act.addEventListener('click', function () {
+      if (filter === 'all') location.href = 'jobs.html';
+      else { filter = 'all'; syncTabs(); render(); }
+    });
+  }
+
+  function syncTabs() {
+    UI.$$('#tabs .tab').forEach(function (t) {
+      t.setAttribute('aria-selected', t.getAttribute('data-filter') === filter ? 'true' : 'false');
+    });
+  }
+  UI.$$('#tabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      filter = t.getAttribute('data-filter');
+      syncTabs();
+      render();
+    });
+  });
+
+  API.myApplications().then(function (data) {
+    rows = data;
+    render();
+  }).catch(function (err) { UI.reportError(err); });
+</script>
+</body>
+</html>
